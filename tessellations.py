@@ -225,7 +225,7 @@ class PolyhedronClass(object):
     def removeFace(self, old_id):
         target_ind = [abs(face) for face in self.faces].index(abs(old_id))
         self.faces.pop(target_ind)
-class PeriodicTessellation(object):
+class Tessellation(object):
     '''Provide path and name of .tess file created with Neper'''
     def __init__(self, tess_file_name, mesh_file_name=None):
         self.tess_file_name=tess_file_name
@@ -237,16 +237,16 @@ class PeriodicTessellation(object):
         self.edges = self.get_edges()
         self.faces = self.get_faces()
         self.polyhedrons = self.get_polyhedrons()
-        self.find_parents()
-        self.domain_size = self.get_periodicity()
-        #self.getPeriodicityInternal(firstTime=True)
-
-        self.rejected_edge_del = [] # For storing  rejected edges, duch that they are not tried again.
+        self.gmsh = []
+        self.rejected_edge_del = []
         self.edge_lengths = self.find_edge_lengths()
-        #self.mergedEdgeId = []
-        self.gmsh=[]
-        self.vertex_id_counter = max(self.vertices.keys())
-        self.edge_id_counter = max(self.edges.keys())
+        self.domain_size = self.get_domain_size()
+        if  ' **periodicity\n' in self.lines:
+            self.find_parents()
+            self.get_periodicity()
+             # For storing  rejected edges, duch that they are not tried again.
+            self.vertex_id_counter = max(self.vertices.keys())
+            self.edge_id_counter = max(self.edges.keys())
 
 
     def get_vertices(self):
@@ -290,10 +290,22 @@ class PeriodicTessellation(object):
             polyhedrons[id_] = PolyhedronClass(self.faces, id_=id_, faces=poly_faces)
         return polyhedrons
 
+    def get_domain_size(self):
+        start_ind = self.lines.index(' **domain\n')
+        # domain_size = np.array(list(map(float, self.lines[domain_size_ind].split())))
+
+        domain_start_ind = start_ind + 5
+        n_verts = 8
+        domain = {}
+        for line in self.lines[domain_start_ind: domain_start_ind + n_verts*2:2]: #line=self.lines[domain_start_ind: domain_start_ind + n_verts*2:2] [0]
+            id_ = int(line.split()[0])
+            coord = np.array(list(map(float, line.split()[1:-1])))
+            domain[id_] = coord
+        return domain[7]-domain[1]
+
     def get_periodicity(self):
         periodicity_start_ind = self.lines.index(' **periodicity\n')
-        domain_size_ind = periodicity_start_ind+3
-        domain_size = np.array(list(map(float, self.lines[domain_size_ind].split())))
+
 
         vertex_start_ind = periodicity_start_ind+ self.lines[periodicity_start_ind:].index('  *vertex\n')
         n_verts = int(self.lines[vertex_start_ind+1])
@@ -319,7 +331,6 @@ class PeriodicTessellation(object):
             self.faces[id_0].slave_to.extend(list(map(int, line.split()[1:])))
             self.faces[id_1].master_to.extend([id_0] + list(map(int,line.split()[2:])))
 
-        return domain_size
 
     def check_if_periodic(self, master_coord, slave_coord):
         coord_offset = slave_coord - master_coord
@@ -1122,157 +1133,16 @@ class PeriodicTessellation(object):
         fig.tight_layout()
 
 
-folderName = r'H:\thesis\periodic\representative\S05R20\ID1'
-mesh_file_name = folderName + r'\\test'
-self = PeriodicTessellation(folderName + r'\\nfrom_morpho-id1.tess')
-self.regularize(n=int(len(self.edges.keys())/2))
+#folderName = r'H:\thesis\periodic\representative\S05R20\ID1'
+#mesh_file_name = folderName + r'\\test'
+#self = Tessellation(folderName + r'\\nfrom_morpho-id1.tess')
+#self.regularize(n=int(len(self.edges.keys())/2))
 #self.mesh_file_name=mesh_file_name
 #self.mesh2D(elem_size=0.02)
 
 
-class CuboidTessellation(object):
-    '''Provide path and name of .tess file created with Neper'''
-    def __init__(self, tessFileName, meshFileName=None):
-        self.tessFileName=tessFileName
-        self.meshFileName=meshFileName
-        with open(self.tessFileName, 'r') as tessRaw:
-            self.lines=tessRaw.readlines()
-        self.vertices=self.getVertexes()
-        self.edges=self.getEdges()
-        self.faces=self.getFaces()
-        self.polyhedrons=self.getVolumes()
-        self.meshLines=[]
-
-    def getVertexes(self):
-        vertexes={}
-        vertexStartInd=self.lines.index(' **vertex\n')
-        for line in self.lines[vertexStartInd+2:vertexStartInd+2+int(self.lines[vertexStartInd+1])]:
-            vertexes[int(line.split()[0])]=[float(value) for value in line.split()[1:-1]]
-        return vertexes
-    def getEdges(self):
-        edges={}
-        edgeStartInd=self.lines.index(' **edge\n')
-        for line in self.lines[edgeStartInd+2:edgeStartInd+2+int(self.lines[edgeStartInd+1])]:
-            edges[int(line.split()[0])]=[int(value) for value in line.split()[1:3]]
-        return edges
-    def getFaces(self):
-        faces = {}
-        faceStartInd = self.lines.index(' **face\n')
-        for i, line in enumerate(self.lines[faceStartInd + 3:faceStartInd + 3 + int(self.lines[faceStartInd + 1])*4:4]):
-            faces[(i+1)*10] = [int(value) for value in line.split()[1:]]
-        return faces
-    def getVolumes(self):
-        volumes = {}
-        volumeStartInd = self.lines.index(' **polyhedron\n')
-        for i, line in enumerate(self.lines[volumeStartInd + 2:volumeStartInd+2+int(self.lines[volumeStartInd+1])]):
-            volumes[int(line.split()[0])] = [int(value) for value in line.split()[2:]]
-        return volumes
-
-    def writeGeo(self, meshFileName = None):
-        if self.meshFileName==None and meshFileName==None:
-            self.meshFileName=self.regTessFileName
-        elif self.meshFileName == None and meshFileName != None:
-            self.meshFileName=meshFileName
-        else:
-            pass
-        with open(self.meshFileName.rsplit('.')[0] + '.geo', 'w+') as geoFile:
-            geoFile.write('SetFactory("OpenCASCADE");\n')
-            for id, coord in zip(self.vertices.keys(), self.vertices.values()):
-                geoFile.write('Point ({id}) = {{{:.10f}, {:.10f}, {:.10f}}};\n'.format(id=id, *coord))
-
-            for id, vert in zip(self.edges.keys(), self.edges.values()):
-                geoFile.write('Line ({id}) = {{{}, {}}};\n'.format(id=id, *vert))
-
-            for id, edg in zip(self.faces.keys(), self.faces.values()):
-                geoFile.write('Curve Loop ({id}) = {{'.format(id=id)+', '.join(map(str, edg))+'};\n')
-                geoFile.write('Surface ({id}) = {{{id2}}};\n'.format(id=id, id2=id))
-
-            for line in self.meshLines:
-                geoFile.write(line)
-            return self.meshFileName
-
-    def mesh2D(self, elemSize, meshType=None, recombine=True, meshFileName=None, cornerRefFact=2., meshAlgo=8, recombAlgo=0):
-        if meshType==None:
-            self.meshLines.append('Field[1] = MathEval;\n')
-            self.meshLines.append('Field[1].F = "{}";\n'.format(elemSize))
-            self.meshLines.append('Background Field = 1;\n')
-        elif meshType=='Distance':
-            self.meshLines.append('Field[1] = Distance;\n')
-            self.meshLines.append('Field[1].NodesList = {{{}}};\n'.format(str(list(self.vertices.keys())).replace(']', '').replace('[', '')))
-            self.meshLines.append('Field[2] = Threshold;\n')
-            self.meshLines.append('Field[2].IField = 1;\n')
-            self.meshLines.append('Field[2].LcMin = {};\n'.format(elemSize/cornerRefFact))
-            self.meshLines.append('Field[2].LcMax = {};\n'.format(elemSize))
-            self.meshLines.append('Field[2].DistMin = {};\n'.format(elemSize*4))
-            self.meshLines.append('Field[2].DistMax = {};\n'.format(elemSize*8))
-            #self.meshLines.append('Field[3] = Min;\n')
-            #self.meshLines.append('Field[3].FieldsList = {2};\n')
-            self.meshLines.append('Background Field = 2;\n')
-            self.meshLines.append('Mesh.CharacteristicLengthExtendFromBoundary = 0;\n')
-            self.meshLines.append('Mesh.CharacteristicLengthFromPoints = 0;\n')
-            self.meshLines.append('Mesh.CharacteristicLengthFromCurvature = 0;\n')
-        self.meshLines.append('Mesh.Algorithm = {};\n'.format(meshAlgo))
-        self.meshLines.append('Mesh.Smoothing = 2;\n')
-        if recombine==True:
-            self.meshLines.append('Mesh.RecombinationAlgorithm = {};\n'.format(recombAlgo))
-            self.meshLines.append('Recombine Surface {:};\n')
-            self.meshLines.append('Mesh.Smoothing = 2;\n')
-        self.writeGeo(meshFileName)
-        subprocess.run('gmsh {}'.format(self.meshFileName.rsplit('.',1)[0])+'.geo -2 -nt 2 -format key')
-        return self.meshFileName.rsplit('.')[0]+'.key'
-
-    def getStatistics(self):
-        fileBaseName=self.tessFileName.rsplit('\\')[-1].split('.')[0]
-        if len(self.tessFileName.split('\\'))==1:
-            fileList=os.listdir()
-            directory=''
-        else:
-            directory = self.tessFileName.rsplit('\\',1)[0]+'\\'
-            fileList=os.listdir(self.tessFileName.rsplit('\\',1)[0])
-
-        for fileName in [fileName for fileName in fileList if fileBaseName in fileName]:
-            if '.stedge' in fileName:
-                with open(directory+fileName) as file:
-                    self.statEdges = np.array([float(item) for item in file.readlines()])
-
-            if '.stface' in fileName:
-                with open(directory+fileName) as file:
-                    temp = np.array([[float(value) for value in item.split()] for item in file.readlines()])
-                self.statFacearea = temp[:, 0]
-                self.statFaceednum = temp[:, 1]
-
-            if '.stpoly' in fileName:
-                with open(directory+fileName) as file:
-                    temp = np.array([[float(value) for value in item.split()] for item in file.readlines()])
-
-                self.statPolyvol = temp[:, 0]
-                self.statPolyspher = temp[:, 1]
-                self.statPolyfacenum = temp[:, 2]
-
-    def plotStat(self):
-        fig, axarr = plt.subplots(2, 2)
-        axarr[0, 0].hist(self.statEdges, bins=20)
-        axarr[0, 0].scatter([np.average(self.statEdges)], [0], color='red')
-        axarr[0, 0].set_title('Edge length')
-        axarr[0, 0].set_xlabel('mm')
-        axarr[0, 1].hist(self.statFacearea, bins=20)
-        axarr[0, 1].scatter([np.average(self.statFacearea)], [0], color='red')
-        axarr[0, 1].set_title('Face area')
-        axarr[0, 1].set_xlabel('mm$^2$')
-        axarr[1, 0].hist(self.statPolyvol, bins=20)
-        axarr[1, 0].scatter([np.average(self.statPolyvol)], [0], color='red')
-        axarr[1, 0].set_title('Cell volume')
-        axarr[1, 0].set_xlabel('mm$^3$')
-        axarr[1, 1].hist(self.statPolyspher, bins=20)
-        axarr[1, 1].scatter([np.average(self.statPolyspher)], [0], color='red')
-        axarr[1, 1].set_title('Sphericity')
-        axarr[1, 1].set_xlabel('[]')
-        # axarr[2, 0].hist(self.statFaceednum, bins=int(self.statFaceednum.max() - self.statFaceednum.min()))
-        # axarr[2, 0].scatter([np.average(self.statFaceednum)], [0], color='red')
-        # axarr[2, 0].set_title('# faces to cell')
-        # axarr[2, 0].set_xlabel('#')
-        # axarr[2, 1].hist(self.stat_polyfacenum, bins=int(self.stat_polyfacenum.max() - self.stat_polyfacenum.min()))
-        # axarr[2, 1].scatter([np.average(self.stat_polyfacenum)], [0], color='red')
-        # axarr[2, 1].set_title('# edges to face')
-        # axarr[2, 1].set_xlabel('#')
-        fig.tight_layout()
+#folderName = r'H:\thesis\linear\representative\S05R1\ID1'
+#mesh_file_name = folderName + r'\\test'
+#self = Tessellation(folderName + r'\\nfrom_morpho-id1.tess')
+#self.mesh_file_name=mesh_file_name
+#self.mesh2D(elem_size=0.02)
