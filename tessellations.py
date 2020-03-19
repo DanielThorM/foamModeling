@@ -11,9 +11,6 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 from matplotlib import cm
 import math
-import micromechanical as mm
-import importlib
-importlib.reload(mm)
 import time
 #neper -T -n 10 -id 1
 class AbsDict(dict):
@@ -228,8 +225,7 @@ class PolyhedronClass(object):
     def removeFace(self, old_id):
         target_ind = [abs(face) for face in self.faces].index(abs(old_id))
         self.faces.pop(target_ind)
-
-class PeriodicTesselation(object):
+class PeriodicTessellation(object):
     '''Provide path and name of .tess file created with Neper'''
     def __init__(self, tess_file_name, mesh_file_name=None):
         self.tess_file_name=tess_file_name
@@ -601,6 +597,16 @@ class PeriodicTesselation(object):
             if vertex in new_vertex_list:
                 new_vertex_list.remove(vertex)
 
+        for vert in new_vertex_list:  # vert = new_vertex_list[2]
+            parents = self.vertices[vert].parents
+            duplicate_edge_sets = self.check_for_duplicate_edges(
+                edge_list=[self.edges[parent_edge_id] for parent_edge_id in parents if
+                           parent_edge_id in self.edges.keys()])
+            if duplicate_edge_sets != []:
+                for duplicate_edge_set in duplicate_edge_sets:  # duplicateEdgeSet = duplicateEdgeSets[0]
+                    coalesced_edges.append(
+                        self.resolve_duplicate_edges(duplicate_edge_set))  # coalescedEdges.append(newEdgeID)
+
         elapsed = time.time() - t
        # print('Time to deal with duplicate vertices: {:.3f} s'.format(elapsed))
         affected_vertices = copy.copy(new_vertex_list)
@@ -854,10 +860,14 @@ class PeriodicTesselation(object):
             self.evaluate_remove_edge(edge_id)
             #if i%1 == 0:
             self.check_periodicity_face()
-            if i % 10 == 0:
+            if i % 1 == 0:
                 if self.check_for_duplicate_vertices() != []:
                     raise Exception('Duplicate vertices happened: {}'.format(i))
                 if self.check_for_duplicate_edges() != []:
+                    #duplicate_edges=self.check_for_duplicate_edges()
+                    #for duplicate_edge in duplicate_edges:
+                        #self.resolve_duplicate_edges(duplicate_edge)
+                    #print ('Duplicate edges happened: {}'.format(i))
                     raise Exception('Duplicate edges happened: {}'.format(i))
 
     def check_for_duplicate_vertices(self, vertex_list=[]):
@@ -1112,15 +1122,15 @@ class PeriodicTesselation(object):
         fig.tight_layout()
 
 
-#folderName = r'H:\thesis\periodic\representative\S05R20\ID1'
-#mesh_file_name = folderName + r'\\test'
-#self = PeriodicTesselation(folderName + r'\\nfrom_morpho-id1.tess')
-#self.regularize(n=int(len(self.edges.keys())/2))
+folderName = r'H:\thesis\periodic\representative\S05R20\ID1'
+mesh_file_name = folderName + r'\\test'
+self = PeriodicTessellation(folderName + r'\\nfrom_morpho-id1.tess')
+self.regularize(n=int(len(self.edges.keys())/2))
 #self.mesh_file_name=mesh_file_name
 #self.mesh2D(elem_size=0.02)
 
 
-class CuboidTesselation(object):
+class CuboidTessellation(object):
     '''Provide path and name of .tess file created with Neper'''
     def __init__(self, tessFileName, meshFileName=None):
         self.tessFileName=tessFileName
