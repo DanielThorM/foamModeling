@@ -241,7 +241,9 @@ class Tessellation(object):
         self.rejected_edge_del = []
         self.edge_lengths = self.find_edge_lengths()
         self.domain_size = self.get_domain_size()
+        self.periodic = False
         if  ' **periodicity\n' in self.lines:
+            self.periodic = True
             self.find_parents()
             self.get_periodicity()
              # For storing  rejected edges, duch that they are not tried again.
@@ -304,9 +306,8 @@ class Tessellation(object):
         return domain[7]-domain[1]
 
     def get_periodicity(self):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         periodicity_start_ind = self.lines.index(' **periodicity\n')
-
-
         vertex_start_ind = periodicity_start_ind+ self.lines[periodicity_start_ind:].index('  *vertex\n')
         n_verts = int(self.lines[vertex_start_ind+1])
         for line in self.lines[vertex_start_ind+2: vertex_start_ind+2+n_verts]:
@@ -331,8 +332,8 @@ class Tessellation(object):
             self.faces[id_0].slave_to.extend(list(map(int, line.split()[1:])))
             self.faces[id_1].master_to.extend([id_0] + list(map(int,line.split()[2:])))
 
-
     def check_if_periodic(self, master_coord, slave_coord):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         coord_offset = slave_coord - master_coord
         offset_is_zero = [math.isclose(offset, 0.0, rel_tol=1e-8, abs_tol=0.0) for offset in coord_offset]
         offset_as_unity = np.array(list(map(int,[not i for i in offset_is_zero])))
@@ -343,6 +344,7 @@ class Tessellation(object):
             return np.array([None, None, None])
 
     def get_periodicity_internal_update(self, affected_vertices):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         affected_edges = []
         for vertex in affected_vertices:
             self.vertices[vertex].master_to = []
@@ -411,6 +413,7 @@ class Tessellation(object):
             checked_edge_list.append(edge.id_)
 
     def find_parents(self):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         for vertex_key in self.vertices.keys():
             self.vertices[vertex_key].parents = []
 
@@ -446,7 +449,7 @@ class Tessellation(object):
             return lengths
 
     def find_new_vertices(self, edges, edge_periodicities, vertices, vertex_periodicities):
-
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         def distance_to_plane(point, plane_equation):
             # planeEquation[1:] should be unity
             return abs(np.dot(plane_equation[1:], point) - plane_equation[0])
@@ -479,6 +482,7 @@ class Tessellation(object):
         return new_edge_vertices, new_vertex_vertices
 
     def find_periodic_dependecies(self, edge):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         ############################################################3
         #First, edge dependecies should be found
         #########################################################
@@ -540,9 +544,9 @@ class Tessellation(object):
         return edges, edge_periodicities, vertices, vertex_periodicities
 
     def remove_edge(self, edge_id, del_layer = 0):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         print_trigger = False
-        if del_layer == 0:
-            print_trigger=True
+        if del_layer == 0: print_trigger=True
         t = time.time()
         edge=self.edges[edge_id]
         # The new vertices are found as offsets from the master edge.
@@ -698,6 +702,7 @@ class Tessellation(object):
             return False
 
     def delete_face_to_edge(self, collapsed_face, print_trigger=False):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         # if the collapsed face does not belong in a slave/master combo, but the deleted edge did, the edge to be deleted should not move the masterVertex.
         #[self.tess_copy.edges[edge].master_to for edge in self.tess_copy.faces[39].edges]
         rem_edges = self.faces[collapsed_face].edges
@@ -740,11 +745,13 @@ class Tessellation(object):
         return new_edge_id
 
     def update_vertex_location(self, vertex, new_vertex_loc):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         self.vertices[vertex.id_].state+=1
         self.vertices[vertex.id_].coord = new_vertex_loc
         return vertex.id_
 
     def replace_edge_with_vertex(self, edge, new_edge_vertex, print_trigger=False):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         # The maximum number of edits from the two vertexs' is recovered
         vert_state = max([self.vertices[vert].state for vert in edge.verts])
         #The list of vertices  to be removed is found
@@ -791,6 +798,7 @@ class Tessellation(object):
         return new_vertex_id, collapsed_faces, old_vert_list
 
     def resolve_duplicate_vertices(self, duplicate_vertices):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         self.vertex_id_counter += 1
         new_vertex_id = self.vertex_id_counter
         state = max([self.vertices[vert].state for vert in duplicate_vertices])
@@ -807,6 +815,7 @@ class Tessellation(object):
         return new_vertex_id
 
     def resolve_duplicate_edges(self, duplicate_edges):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         rem_edges = duplicate_edges
         # Merge the two edges for all remaining faces
         self.edge_id_counter += 1
@@ -836,6 +845,7 @@ class Tessellation(object):
         return new_edge_id
 
     def evaluate_remove_edge(self, edge_id):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         #The current structure is copied and all operations happen on this copy.
         self.tess_copy = copy.deepcopy(self)
         #The edge is deleted in the copy, returning the new vertex ids and angle deviation.
@@ -862,6 +872,7 @@ class Tessellation(object):
             self.tess_copy = []
 
     def regularize(self, n):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         for i in range(n):
             print(i)
             if len(self.edge_lengths) < 2:
@@ -882,6 +893,7 @@ class Tessellation(object):
                     raise Exception('Duplicate edges happened: {}'.format(i))
 
     def check_for_duplicate_vertices(self, vertex_list=[]):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         vertex_loc_list = []
         duplicate_coord_set = []
         if vertex_list == []:
@@ -893,6 +905,7 @@ class Tessellation(object):
         return duplicate_coord_set
 
     def check_for_duplicate_edges(self, edge_list=[]):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         edge_loc_list = []
         duplicate_edge_set = []
         if edge_list == []:
@@ -905,6 +918,7 @@ class Tessellation(object):
         return duplicate_edge_set
 
     def check_periodicity_vertex(self):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         for vert in self.vertices.values():
             if vert.master_to != []:
                 for i in range(0, len(vert.master_to), 4):
@@ -916,6 +930,7 @@ class Tessellation(object):
                         print('Master vertex {} and slave vertex {} no longer periodic'.format(vert.id_, slave_period[0]))
 
     def check_periodicity_edge(self):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         for edge in self.edges.values():
             if edge.master_to != []:
                 for i in range(0, len(edge.master_to), 5):
@@ -928,6 +943,7 @@ class Tessellation(object):
                         raise Exception('Faces not periodic'.format(i))
 
     def check_periodicity_face(self):
+        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         for face in self.faces.values():
             if face.master_to != []:
                 for i in range(0, len(face.master_to), 5):
