@@ -14,11 +14,10 @@
       <file leaf-file-name="tessellations.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tessellations.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1275">
-              <caret line="751" lean-forward="true" selection-start-line="751" selection-end-line="751" />
+            <state relative-caret-position="132">
+              <caret line="35" selection-start-line="35" selection-end-line="35" />
               <folding>
                 <element signature="e#0#17#0" expanded="true" />
-                <element signature="e#702#2489#0" />
                 <element signature="e#2522#2983#0" />
                 <element signature="e#3013#4117#0" />
                 <element signature="e#4147#7447#0" />
@@ -45,10 +44,8 @@
                 <element signature="e#41624#42906#0" />
                 <element signature="e#43038#43934#0" />
                 <element signature="e#44097#44545#0" />
-                <element signature="e#44703#45187#0" />
                 <element signature="e#45330#45937#0" />
                 <element signature="e#46078#46706#0" />
-                <element signature="e#46847#47582#0" />
                 <element signature="e#45015#45237#0" />
                 <element signature="e#45283#48129#0" />
                 <element signature="e#48187#49323#0" />
@@ -63,14 +60,32 @@
       <file leaf-file-name="meshmodel.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/meshmodel.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="355">
-              <caret line="120" lean-forward="true" selection-start-line="120" selection-end-line="120" />
+            <state relative-caret-position="293">
+              <caret line="489" column="76" lean-forward="true" selection-start-line="489" selection-start-column="76" selection-end-line="489" selection-end-column="76" />
               <folding>
                 <element signature="e#0#26#0" expanded="true" />
-                <element signature="e#745#1909#0" />
-                <element signature="e#4758#5041#0" />
+                <element signature="e#667#1145#0" />
+                <element signature="e#1161#2068#0" />
+                <element signature="e#2876#2968#0" />
+                <element signature="e#3304#4020#0" />
+                <element signature="e#2766#5720#0" />
+                <element signature="e#5733#6025#0" />
                 <element signature="e#5128#5222#0" />
-                <element signature="e#5378#6116#0" />
+                <element signature="e#6276#7018#0" />
+                <element signature="e#6905#8345#0" />
+                <element signature="e#8400#9078#0" />
+                <element signature="e#9131#10894#0" />
+                <element signature="e#11134#15317#0" />
+                <element signature="e#16620#17989#0" />
+                <element signature="e#21403#21893#0" />
+                <element signature="e#23528#24387#0" />
+                <element signature="e#24506#24675#0" />
+                <element signature="e#25019#25118#0" />
+                <element signature="e#24382#24689#0" />
+                <element signature="e#21305#21723#0" />
+                <element signature="e#25754#25820#0" />
+                <element signature="e#25866#25937#0" />
+                <element signature="e#23668#25061#0" />
               </folding>
             </state>
           </provider>
@@ -88,10 +103,18 @@
   <component name="FindInProjectRecents">
     <findStrings>
       <find>.vertexes</find>
+      <find>edge_id</find>
+      <find>.edge_id</find>
+      <find>.elements</find>
       <find>vertex</find>
+      <find>self.part_tup</find>
+      <find>thikness</find>
     </findStrings>
     <replaceStrings>
       <replace>.vertices</replace>
+      <replace>.master_to</replace>
+      <replace>.id_</replace>
+      <replace>self.part_num_offset</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -141,6 +164,7 @@
     </panes>
   </component>
   <component name="PropertiesComponent">
+    <property name="SearchEverywhereHistoryKey" value="&#9;FILE&#9;file://C:/Users/danieltm/OneDrive - NTNU/PythonScripts/foammodeling/tessellations.py" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="last_opened_file_path" value="$USER_HOME$/AppData/Local/GitHubDesktop/app-2.3.1/resources/app/git/cmd/git.exe" />
     <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
@@ -212,17 +236,16 @@
           <line>1149</line>
         </line-breakpoint>
       </breakpoints>
-      <option name="time" value="3" />
+      <option name="time" value="7" />
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/tessellations.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1275">
-          <caret line="751" lean-forward="true" selection-start-line="751" selection-end-line="751" />
+        <state relative-caret-position="132">
+          <caret line="35" selection-start-line="35" selection-end-line="35" />
           <folding>
             <element signature="e#0#17#0" expanded="true" />
-            <element signature="e#702#2489#0" />
             <element signature="e#2522#2983#0" />
             <element signature="e#3013#4117#0" />
             <element signature="e#4147#7447#0" />
@@ -249,10 +272,8 @@
             <element signature="e#41624#42906#0" />
             <element signature="e#43038#43934#0" />
             <element signature="e#44097#44545#0" />
-            <element signature="e#44703#45187#0" />
             <element signature="e#45330#45937#0" />
             <element signature="e#46078#46706#0" />
-            <element signature="e#46847#47582#0" />
             <element signature="e#45015#45237#0" />
             <element signature="e#45283#48129#0" />
             <element signature="e#48187#49323#0" />
@@ -265,14 +286,32 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/meshmodel.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="355">
-          <caret line="120" lean-forward="true" selection-start-line="120" selection-end-line="120" />
+        <state relative-caret-position="293">
+          <caret line="489" column="76" lean-forward="true" selection-start-line="489" selection-start-column="76" selection-end-line="489" selection-end-column="76" />
           <folding>
             <element signature="e#0#26#0" expanded="true" />
-            <element signature="e#745#1909#0" />
-            <element signature="e#4758#5041#0" />
+            <element signature="e#667#1145#0" />
+            <element signature="e#1161#2068#0" />
+            <element signature="e#2876#2968#0" />
+            <element signature="e#3304#4020#0" />
+            <element signature="e#2766#5720#0" />
+            <element signature="e#5733#6025#0" />
             <element signature="e#5128#5222#0" />
-            <element signature="e#5378#6116#0" />
+            <element signature="e#6276#7018#0" />
+            <element signature="e#6905#8345#0" />
+            <element signature="e#8400#9078#0" />
+            <element signature="e#9131#10894#0" />
+            <element signature="e#11134#15317#0" />
+            <element signature="e#16620#17989#0" />
+            <element signature="e#21403#21893#0" />
+            <element signature="e#23528#24387#0" />
+            <element signature="e#24506#24675#0" />
+            <element signature="e#25019#25118#0" />
+            <element signature="e#24382#24689#0" />
+            <element signature="e#21305#21723#0" />
+            <element signature="e#25754#25820#0" />
+            <element signature="e#25866#25937#0" />
+            <element signature="e#23668#25061#0" />
           </folding>
         </state>
       </provider>
