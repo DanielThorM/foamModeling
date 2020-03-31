@@ -50,7 +50,7 @@ class ShellElementClass(object):
                 return False
         return True
 
-    def incedent_to_plane(self, plane = None, loc = None):
+    def incident_to_plane(self, plane = None, loc = None):
         plane_map = {'x': 0, 'y': 1, 'z': 2}
         coords = np.array([node.coord for node in [self.nodes[node_id] for node_id in self.node_ids]])
         for coord in coords:
@@ -528,7 +528,7 @@ class LSDynaGeometry(object):
         self.set_phi()
 
     def set_beam_shape(self, beam_shape):
-        """'straingt', 'marvi'"""
+        """'straight', 'marvi'"""
         for beam in self.beams.values():
             beam.set_beam_shape(beam_shape=beam_shape)
 
@@ -640,62 +640,69 @@ class LSDynaGeometry(object):
 
         self.beams = self.find_beams()
 
-    def create_side_elements(self, sides=['x', 'y', 'z']):
+    def create_side_elements(self, sides=['x', 'y', 'z'], ):
         if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
         new_coord_systems = []
         part_id = int(max(self.surfs.keys()))
         self.corner_nodes = self.find_corner_nodes()
+
+        self.last_element_key += 1
+        part_id += 10
+        node_ids = [self.corner_nodes[0], self.corner_nodes[3], self.corner_nodes[7], self.corner_nodes[4]]
+        new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
         if 'x' in [side.lower() for side in sides]:
-            self.last_element_key += 1
-            part_id += 10
-            node_ids = [self.corner_nodes[0], self.corner_nodes[3], self.corner_nodes[7], self.corner_nodes[4]]
-            new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
             self.shell_elements[self.last_element_key] = ShellElementClass(
                 self.nodes, self.last_element_key, part_id, node_ids
             )
 
-            self.last_element_key += 1
-            part_id += 10
-            node_ids = [self.corner_nodes[1], self.corner_nodes[5], self.corner_nodes[6], self.corner_nodes[2]]
-            new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+        self.last_element_key += 1
+        part_id += 10
+        node_ids = [self.corner_nodes[1], self.corner_nodes[5], self.corner_nodes[6], self.corner_nodes[2]]
+        new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+        if 'x' in [side.lower() for side in sides]:
             self.shell_elements[self.last_element_key] = ShellElementClass(
                 self.nodes, self.last_element_key, part_id, node_ids
             )
 
 
-        elif 'y' in [side.lower() for side in sides]:
-            self.last_element_key += 1
-            part_id += 10
-            node_ids = [self.corner_nodes[0], self.corner_nodes[4], self.corner_nodes[5], self.corner_nodes[1]]
-            new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+
+        self.last_element_key += 1
+        part_id += 10
+        node_ids = [self.corner_nodes[0], self.corner_nodes[4], self.corner_nodes[5], self.corner_nodes[1]]
+        new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+        if 'y' in [side.lower() for side in sides]:
             self.shell_elements[self.last_element_key] = ShellElementClass(
                 self.nodes, self.last_element_key, part_id, node_ids
             )
 
-            self.last_element_key += 1
-            part_id += 10
-            node_ids = [self.corner_nodes[2], self.corner_nodes[6], self.corner_nodes[7], self.corner_nodes[3]]
-            new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
-            self.shell_elements[self.last_element_key] = ShellElementClass(
-                self.nodes, self.last_element_key, part_id, node_ids
-            )
-        elif 'z' in [side.lower() for side in sides]:
-            self.last_element_key += 1
-            part_id += 10
-            node_ids = [self.corner_nodes[0], self.corner_nodes[1], self.corner_nodes[2], self.corner_nodes[3]]
-            new_coord_systems.append([node_ids[0], node_ids[1],node_ids[3]])
+        self.last_element_key += 1
+        part_id += 10
+        node_ids = [self.corner_nodes[2], self.corner_nodes[6], self.corner_nodes[7], self.corner_nodes[3]]
+        new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+        if 'y' in [side.lower() for side in sides]:
             self.shell_elements[self.last_element_key] = ShellElementClass(
                 self.nodes, self.last_element_key, part_id, node_ids
             )
 
-            self.last_element_key += 1
-            part_id += 10
-            node_ids = [self.corner_nodes[4], self.corner_nodes[7], self.corner_nodes[6], self.corner_nodes[5]]
-            new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+        self.last_element_key += 1
+        part_id += 10
+        node_ids = [self.corner_nodes[0], self.corner_nodes[1], self.corner_nodes[2], self.corner_nodes[3]]
+        new_coord_systems.append([node_ids[0], node_ids[1],node_ids[3]])
+        if 'z' in [side.lower() for side in sides]:
             self.shell_elements[self.last_element_key] = ShellElementClass(
                 self.nodes, self.last_element_key, part_id, node_ids
             )
-        return new_coord_systems
+
+        self.last_element_key += 1
+        part_id += 10
+        node_ids = [self.corner_nodes[4], self.corner_nodes[7], self.corner_nodes[6], self.corner_nodes[5]]
+        new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+        if 'z' in [side.lower() for side in sides]:
+            self.shell_elements[self.last_element_key] = ShellElementClass(
+                self.nodes, self.last_element_key, part_id, node_ids
+            )
+        self.surfs = self.find_surfs()
+        self.coord_systems = new_coord_systems
 
     def create_node_list_in_plane(self, plane='z', plane_loc=0.0):
         if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
@@ -795,4 +802,24 @@ class LSDynaGeometry(object):
             edge_parts_pr_side.append(list(set(temp_side_parts).intersection(self.surfs.keys())))
         return edge_parts_pr_side
 
-self=LSDynaGeometry(tessellation=tessellation, debug=True)
+    def increase_side_plate_dim(self, plane='x', offset = None): #Do this after deformation gradient has been assigned.
+        if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
+        plane_map={'x':0, 'y':1, 'z':2}
+        if offset == None:
+            offset = self.tessellation.domain_size * 0.2
+        offset_direction = [[-1, -1, -1],
+                            [1, -1, -1],
+                            [1, 1, -1],
+                            [-1, 1, -1],
+                            [-1, -1, 1],
+                            [1, -1, 1],
+                            [1, 1, 1],
+                            [-1, 1, 1]]
+        for i, node in enumerate(self.corner_nodes):
+            for direction in set([0,1,2])-set([plane_map[plane]]):
+                self.nodes[node].coord[direction] += offset_direction[i][direction]*offset[direction]
+
+mesh_geometry=LSDynaGeometry(tessellation=tessellation, debug=True)
+mesh_geometry.create_side_elements()
+#mesh_geometry.increase_side_plate_dim('z')
+#mesh_geometry.nodes[1].coord
