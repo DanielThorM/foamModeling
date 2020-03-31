@@ -241,6 +241,7 @@ class Tessellation(object):
         self.rejected_edge_del = []
         self.edge_lengths = self.find_edge_lengths()
         self.domain_size = self.get_domain_size()
+        self.find_parents()
         self.periodic = False
         if  ' **periodicity\n' in self.lines:
             self.periodic = True
@@ -413,7 +414,6 @@ class Tessellation(object):
             checked_edge_list.append(edge.id_)
 
     def find_parents(self):
-        if self.periodic == False: raise Exception('Invalid action for current tesselation')
         for vertex_key in self.vertices.keys():
             self.vertices[vertex_key].parents = []
 
