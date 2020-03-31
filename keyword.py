@@ -134,7 +134,7 @@ class Keyword(object):
     def submit_block(self, line_block):
         self.lines.append(line_block)
 
-    def set_node_list(self, nsid, nodeList):
+    def set_node_list(self, nsid, node_list):
         line_block = ['*SET_NODE_LIST_TITLE\n']
         line_block.append('Node list {}\n'.format(nsid))
         line_block.append(
@@ -142,12 +142,12 @@ class Keyword(object):
         line_block.append(self.format_key_line([nsid, 0.0, 0.0, 0.0, 0.0, 'MECH']))
         line_block.append(
             '$#              nid1                nid2                nid3                nid4                nid5                nid6                nid7                nid8\n')
-        k, m = divmod(len(nodeList), 8)
+        k, m = divmod(len(node_list), 8)
         if m != 0:
-            nodeList.extend([0] * (8 - m))
+            node_list.extend([0] * (8 - m))
             k = k + 1
         for i in range(k):
-            line_block.append(self.format_key_line(nodeList[8 * i:8 * (i + 1)]))
+            line_block.append(self.format_key_line(node_list[8 * i:8 * (i + 1)]))
         self.submit_block(line_block)
 
     def set_segment(self, nsid, nodeList):
@@ -1104,7 +1104,7 @@ class Keyword(object):
         line_block.append(self.format_key_line([nsid, cid, dofx, dofy, dofz, dofrx, dofry, dofrz]))
         self.submit_block(line_block)
 
-    def boundarySPCNode(self, bspcid, nid, dofx=1, dofy=1, dofz=1, dofrx=0, dofry=0, dofrz=0, cid=0):
+    def boundary_spc_node(self, bspcid, nid, dofx=1, dofy=1, dofz=1, dofrx=0, dofry=0, dofrz=0, cid=0):
         line_block = ['*BOUNDARY_SPC_NODE_ID\n']
         line_block.append(self.format_key_line([bspcid, 'Boundary SPC {}'.format(bspcid)]))
         line_block.append(
@@ -1662,3 +1662,152 @@ class Keyword(object):
             '$#               psf                lcid               gamma                  po                  pe                  ro\n')
         line_block.append(self.format_key_line([psf, lcid, gamma, po, pa, ro]))
         self.submit_block(line_block)
+
+class BoundaryConditions(): #
+    def __init__(self, keyword, mesh_geometry):
+        self.keyword=keyword
+        self.mesh_geometry = mesh_geometry
+    def non_periodic_enclosed(self, def_gradient, rot_dof=0, phi=0.0, soft=1):
+        self.keyword.comment_block('Boundary conditions')
+        side_elements = self.mesh_geometry.find_side_surfs()
+        plane_locs= [0.0, self.mesh_geometry.tessellation.domain_size[0],
+                        0.0, self.mesh_geometry.tessellation.domain_size[1],
+                        0.0, self.mesh_geometry.tessellation.domain_size[2]]
+        planes = ['x', 'x', 'y', 'y', 'z', 'z']
+        face_nodes_list = []
+        for plane, plane_loc in zip(planes, plane_locs):
+            surf_element = self.mesh_geometry.surfs[side_elements[0][0]].elem_ids[0]
+            nodes = list(set(self.mesh_geometry.create_node_list_in_plane(plane=plane, plane_loc=plane_loc))
+                          - set(self.mesh_geometry.shell_elements[surf_element].node_ids)) #remove corner nodes
+            face_nodes_list.append(nodes)
+        face_core_nodes_list = []
+        for i, plane in enumerate(['x', 'y', 'z']):
+            if plane == 'x':
+                rem_nodes = set([node for node_list in face_nodes_list[2:] for node in node_list])
+            elif plane == 'y':
+                rem_nodes = set([node for node_list in [*face_nodes_list[:2], *face_nodes_list[4:]] for node in node_list])
+            elif plane == 'z':
+                rem_nodes = set([node for node_list in face_nodes_list[:4] for node in node_list])
+            # remNodes=set(np.array([sidePlateElement.nodes for sidePlateElement in sidePlateElements]).flatten())
+            # remNodes=set(list(np.array(coordinateSystems).flatten()))
+            face_core_nodes_list.append(list(set(face_nodes_list[i * 2]) - rem_nodes))
+            face_core_nodes_list.append(list(set(face_nodes_list[(i * 2) + 1]) - rem_nodes))
+
+        side_node_lists = [face_nodes_list[0], face_nodes_list[1],
+                         list(set(face_nodes_list[2]) - set(face_nodes_list[0]) - set(face_nodes_list[1])),
+                         list(set(face_nodes_list[3]) - set(face_nodes_list[0]) - set(face_nodes_list[1])),
+                         face_core_nodes_list[4],
+                         face_core_nodes_list[5]] #Remove nodes which would have been duplicated at the edges
+
+        side_faces_list = self.mesh_geometry.find_parts_for_box_contact()
+        def tiebreak_contact_node_to_surface(self, soft):
+            for i, side_element in enumerate(side_elements):
+                self.keyword.set_node_list(nsid=(i + 101), node_list=side_node_lists[i])
+                node_list = []
+                for face in side_faces_list[i]:
+                    for element in self.mesh_geometry.surfs[face].elem_ids:
+                        node_list.extend(self.mesh_geometry.shell_elements[element].node_ids)
+                side_faces_nodes = list(set(node_list) - set(side_node_lists[i]))
+                self.keyword.set_node_list(nsid=(i + 301), node_list=side_faces_nodes)
+                self.keyword.contact_tiebreak_nodes_to_surface(cid=(i + 101), ssid=(i + 101), msid=side_element, fs=0.0,
+                                                           fd=0.0, soft=soft, ignore=1)
+                self.keyword.contact_force_transducer(cid=(i + 201), ssid=side_element)
+                self.keyword.contact_automatic_nodes_to_surface(cid=(i + 301), ssid=(i + 301), msid=side_element,
+                                                            fs=0.0, fd=0.0, dc=0.0, soft=soft, ignore=1, depth=1)
+
+        if phi == 1.0:
+            side_node_lists = self.mesh_geometry.find_beam_node_on_side()
+            side_faces_list = [[]] * 6
+            tiebreak_contact_node_to_surface(self, soft)
+        else:
+            tiebreak_contact_node_to_surface(self, soft)
+
+        if rot_dof == 1:
+            for i, coord_nodes in enumerate(self.mesh_geometry.coord_systems):
+                if side_elements[i] != []:
+                    self.keyword.define_coordinate_nodes(cid=(i + 1), nodes=coord_nodes, flag=1)
+                    self.keyword.set_node_list(nsid=501 + i,
+                                               node_list=face_core_nodes_list[i])
+                    self.keyword.boundary_spc_set(bspcid=(i + 501), nsid=(i + 501), dofx=0, dofy=0, dofz=0, dofrx=1, dofry=1,
+                                                dofrz=0, cid=(i + 1))
+        corner_nodes = self.mesh_geometry.corner_nodes
+        self.def_grad_prescription(def_gradient, corner_nodes, disp_type='vel')
+        self.keyword.database_hist_node(nid=self.mesh_geometry.corner_nodes)
+        # for i, nodeset in enumerate(faceNodesList):
+        #    self.keyword.setNodeList(nsid=401 + i,
+        # node_list=nodeset)
+        #    self.keyword.databaseNODFORGroup(nsid=401 + i)
+        # self.keyword.databaseNCFORC(dt=self.keyword.endtim / 200.)
+
+        return self.keyword
+
+    def def_grad_prescription(self, def_gradient, corner_nodes, disp_type='vel', disp_node_set = None):
+        for i, node in enumerate(corner_nodes):
+            coords = self.mesh_geometry.nodes[node].coord
+            if disp_node_set != None:
+                self.keyword.set_node_list(nsid=10 + 10 * i, node_list=disp_node_set[i])
+            if len(def_gradient.shape) == 2:
+                u_gradient = def_gradient - np.identity(3)
+                u_disp = u_gradient.dot(coords)
+                for j, node_disp in enumerate(u_disp):
+                    # (self, lcid, dist, tstart, tend, triseFrac=0.1, v0=0.0)
+                    if disp_type == 'disp':
+                        vad=2
+                        self.keyword.define_curve(lcid=10 * (i + 1) + (j + 1), abscissaList=[0.0, time_inc],
+                                                  ordinateList=[0, abs(node_disp)])
+                    elif disp_type == 'vel':
+                        vad=0
+                        self.keyword.define_curve_smooth(lcid=10 * (i + 1) + (j + 1), dist=abs(node_disp), tstart=0.0,
+                                                         tend=self.keyword.endtim, trise_frac=0.1)
+
+                    if disp_node_set != None:
+                        self.keyword.prescribe_boundary_motion_set(bmsid=10 * (i + 1) + (j + 1), nsid=10 + 10 * i,
+                                                                dof=(j + 1),
+                                                                vad=vad, lcid=10 * (i + 1) + (j + 1), #if implicit: vad = 2, else vad = 0
+                                                                sf=np.sign(node_disp),
+                                                                birth=0.0, death=self.keyword.endtim)
+                    else:
+                        self.keyword.prescribe_boundary_motion_node(bmsid=10 * (i + 1) + (j + 1), nid=node, dof=(j + 1),
+                                                                    vad=vad, lcid=10 * (i + 1) + (j + 1),
+                                                                    sf=np.sign(node_disp),
+                                                                    birth=0.0, death=self.keyword.endtim)
+
+
+
+
+            else:
+                u_gradient = np.array([temp - np.identity(3) for temp in def_gradient])
+                u_disp = np.array([temp.dot(coords) for temp in u_gradient])
+                du_disp = u_disp - np.insert(u_disp[:1, :], 0, np.array([0, 0, 0]), axis=0)
+                time_inc = self.keyword.endtim / len(du_disp)
+                for k, du_disp_step in enumerate(du_disp):
+                    for j, node_disp in enumerate(du_disp_step):
+                        np.sign(node_disp)
+                        if disp_type == 'disp':
+                            vad = 2
+                            self.keyword.define_curve(lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                      abscissaList=[0.0, time_inc],
+                                                      ordinateList=[0, abs(node_disp)])
+                        elif disp_type == 'vel':
+                            vad = 0
+                            self.keyword.define_curve_smooth(lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                             dist=abs(node_disp),
+                                                             tstart=0.0,
+                                                             tend=time_inc, trise_frac=0.1)
+
+                        if disp_node_set != None:
+                            self.keyword.prescribe_boundary_motion_node(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                        nid=node, dof=(j + 1),
+                                                                        vad=vad,
+                                                                        lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                        sf=np.sign(node_disp), birth=k * time_inc,
+                                                                        death=(k + 1) * time_inc)
+                        else:
+                            self.keyword.prescribeBoundaryMotionSet(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                    nsid=10 + 10 * i, dof=(j + 1),
+                                                                    vad=vad, lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                    sf=np.sign(node_disp), birth=k * time_inc,
+                                                                    death=(k + 1) * time_inc)
+
+keyword = Keyword(r'H:\thesis\linear\representative\S05R1\ID1\testKey.key')
+self = BoundaryConditions(keyword, mesh_geometry)
