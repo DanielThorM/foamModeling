@@ -244,7 +244,6 @@ class LSDynaGeometry(object):
             self.find_vertex_nodes_periodicity()
             self.find_edge_nodes_periodicity()
             self.transfer_surfaces()
-            self.beam_oriention = self.find_beam_oriention()
             self.solids = self.find_reference_elements()
 
         if self.tessellation.periodic == False:
@@ -620,7 +619,7 @@ class LSDynaGeometry(object):
         self.surfs = self.find_surfs()
 
         # Beams
-
+        # Need to delete nodes as well?
         del_elems = []
         plane_map = {'x': 0, 'y': 1, 'z': 2}
         for elem in self.beam_elements.values(): #elem = list(self.beam_elements.values())[0]
