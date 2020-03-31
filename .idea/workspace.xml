@@ -14,14 +14,14 @@
       <file leaf-file-name="tessellations.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tessellations.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="132">
-              <caret line="35" selection-start-line="35" selection-end-line="35" />
+            <state relative-caret-position="858">
+              <caret line="283" lean-forward="true" selection-start-line="283" selection-end-line="283" />
               <folding>
                 <element signature="e#0#17#0" expanded="true" />
+                <element signature="e#702#2489#0" />
                 <element signature="e#2522#2983#0" />
                 <element signature="e#3013#4117#0" />
                 <element signature="e#4147#7447#0" />
-                <element signature="e#7483#7755#0" />
                 <element signature="e#8761#9100#0" />
                 <element signature="e#9135#9491#0" />
                 <element signature="e#9526#10009#0" />
@@ -30,7 +30,6 @@
                 <element signature="e#10935#12549#0" />
                 <element signature="e#12619#13208#0" />
                 <element signature="e#13284#17172#0" />
-                <element signature="e#17210#18205#0" />
                 <element signature="e#17676#18023#0" />
                 <element signature="e#18126#20068#0" />
                 <element signature="e#20789#24591#0" />
@@ -44,8 +43,10 @@
                 <element signature="e#41624#42906#0" />
                 <element signature="e#43038#43934#0" />
                 <element signature="e#44097#44545#0" />
+                <element signature="e#44703#45187#0" />
                 <element signature="e#45330#45937#0" />
                 <element signature="e#46078#46706#0" />
+                <element signature="e#46847#47582#0" />
                 <element signature="e#45015#45237#0" />
                 <element signature="e#45283#48129#0" />
                 <element signature="e#48187#49323#0" />
@@ -60,24 +61,38 @@
       <file leaf-file-name="meshmodel.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/meshmodel.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="293">
-              <caret line="489" column="76" lean-forward="true" selection-start-line="489" selection-start-column="76" selection-end-line="489" selection-end-column="76" />
+            <state relative-caret-position="442">
+              <caret line="102" column="20" lean-forward="true" selection-start-line="102" selection-start-column="20" selection-end-line="102" selection-end-column="20" />
               <folding>
                 <element signature="e#0#26#0" expanded="true" />
-                <element signature="e#667#1145#0" />
-                <element signature="e#1161#2068#0" />
+                <element signature="e#492#622#0" />
+                <element signature="e#948#2047#0" />
+                <element signature="e#1465#1724#0" />
+                <element signature="e#1762#3316#0" />
+                <element signature="e#2109#2270#0" />
+                <element signature="e#3880#4791#0" />
+                <element signature="e#4282#7553#0" />
                 <element signature="e#2876#2968#0" />
                 <element signature="e#3304#4020#0" />
+                <element signature="e#4413#5104#0" />
+                <element signature="e#5150#5589#0" />
+                <element signature="e#3038#3094#0" />
+                <element signature="e#8361#39151#0" />
                 <element signature="e#2766#5720#0" />
                 <element signature="e#5733#6025#0" />
                 <element signature="e#5128#5222#0" />
                 <element signature="e#6276#7018#0" />
-                <element signature="e#6905#8345#0" />
+                <element signature="e#12220#13667#0" />
                 <element signature="e#8400#9078#0" />
                 <element signature="e#9131#10894#0" />
                 <element signature="e#11134#15317#0" />
                 <element signature="e#16620#17989#0" />
                 <element signature="e#21403#21893#0" />
+                <element signature="e#21924#22011#0" />
+                <element signature="e#22042#22120#0" />
+                <element signature="e#21926#22013#0" />
+                <element signature="e#22049#22136#0" />
+                <element signature="e#22174#22330#0" />
                 <element signature="e#23528#24387#0" />
                 <element signature="e#24506#24675#0" />
                 <element signature="e#25019#25118#0" />
@@ -85,7 +100,16 @@
                 <element signature="e#21305#21723#0" />
                 <element signature="e#25754#25820#0" />
                 <element signature="e#25866#25937#0" />
-                <element signature="e#23668#25061#0" />
+                <element signature="e#27262#28735#0" />
+                <element signature="e#26731#27545#0" />
+                <element signature="e#30001#31843#0" />
+                <element signature="e#31912#34818#0" />
+                <element signature="e#34895#35258#0" />
+                <element signature="e#34159#34573#0" />
+                <element signature="e#34756#35227#0" />
+                <element signature="e#36713#37517#0" />
+                <element signature="e#36656#37116#0" />
+                <element signature="e#38260#38932#0" />
               </folding>
             </state>
           </provider>
@@ -106,15 +130,18 @@
       <find>edge_id</find>
       <find>.edge_id</find>
       <find>.elements</find>
-      <find>vertex</find>
-      <find>self.part_tup</find>
       <find>thikness</find>
+      <find>cornerNodes</find>
+      <find>vertex</find>
+      <find>corner_nodes</find>
+      <find>self.part_tup</find>
     </findStrings>
     <replaceStrings>
       <replace>.vertices</replace>
       <replace>.master_to</replace>
-      <replace>.id_</replace>
       <replace>self.part_num_offset</replace>
+      <replace>corner_nodes</replace>
+      <replace>.id_</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -140,9 +167,9 @@
     <packageJsonPaths />
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="-8" />
-    <option name="width" value="1935" />
-    <option name="height" value="1038" />
+    <option name="x" value="-7" />
+    <option name="width" value="1547" />
+    <option name="height" value="830" />
   </component>
   <component name="ProjectView">
     <navigator proportions="" version="1">
@@ -197,19 +224,20 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-7" y="-7" width="1550" height="838" extended-state="6" />
+    <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
+    <editor active="true" />
     <layout>
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Event Log" side_tool="true" />
       <window_info anchor="bottom" id="Database Changes" show_stripe_button="false" />
       <window_info anchor="bottom" id="Run" order="2" />
       <window_info anchor="bottom" id="Version Control" />
-      <window_info active="true" anchor="bottom" id="Python Console" visible="true" weight="0.32905984" />
+      <window_info anchor="bottom" id="Python Console" weight="0.251634" />
       <window_info anchor="bottom" id="Terminal" />
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.24966443" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.19829424" />
       <window_info anchor="bottom" id="Docker" show_stripe_button="false" />
       <window_info anchor="right" id="Database" />
-      <window_info anchor="bottom" id="Find" order="1" weight="0.32905984" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.32897604" />
       <window_info anchor="right" id="SciView" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
@@ -236,20 +264,20 @@
           <line>1149</line>
         </line-breakpoint>
       </breakpoints>
-      <option name="time" value="7" />
+      <option name="time" value="23" />
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/tessellations.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="132">
-          <caret line="35" selection-start-line="35" selection-end-line="35" />
+        <state relative-caret-position="858">
+          <caret line="283" lean-forward="true" selection-start-line="283" selection-end-line="283" />
           <folding>
             <element signature="e#0#17#0" expanded="true" />
+            <element signature="e#702#2489#0" />
             <element signature="e#2522#2983#0" />
             <element signature="e#3013#4117#0" />
             <element signature="e#4147#7447#0" />
-            <element signature="e#7483#7755#0" />
             <element signature="e#8761#9100#0" />
             <element signature="e#9135#9491#0" />
             <element signature="e#9526#10009#0" />
@@ -258,7 +286,6 @@
             <element signature="e#10935#12549#0" />
             <element signature="e#12619#13208#0" />
             <element signature="e#13284#17172#0" />
-            <element signature="e#17210#18205#0" />
             <element signature="e#17676#18023#0" />
             <element signature="e#18126#20068#0" />
             <element signature="e#20789#24591#0" />
@@ -272,8 +299,10 @@
             <element signature="e#41624#42906#0" />
             <element signature="e#43038#43934#0" />
             <element signature="e#44097#44545#0" />
+            <element signature="e#44703#45187#0" />
             <element signature="e#45330#45937#0" />
             <element signature="e#46078#46706#0" />
+            <element signature="e#46847#47582#0" />
             <element signature="e#45015#45237#0" />
             <element signature="e#45283#48129#0" />
             <element signature="e#48187#49323#0" />
@@ -286,24 +315,38 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/meshmodel.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="293">
-          <caret line="489" column="76" lean-forward="true" selection-start-line="489" selection-start-column="76" selection-end-line="489" selection-end-column="76" />
+        <state relative-caret-position="442">
+          <caret line="102" column="20" lean-forward="true" selection-start-line="102" selection-start-column="20" selection-end-line="102" selection-end-column="20" />
           <folding>
             <element signature="e#0#26#0" expanded="true" />
-            <element signature="e#667#1145#0" />
-            <element signature="e#1161#2068#0" />
+            <element signature="e#492#622#0" />
+            <element signature="e#948#2047#0" />
+            <element signature="e#1465#1724#0" />
+            <element signature="e#1762#3316#0" />
+            <element signature="e#2109#2270#0" />
+            <element signature="e#3880#4791#0" />
+            <element signature="e#4282#7553#0" />
             <element signature="e#2876#2968#0" />
             <element signature="e#3304#4020#0" />
+            <element signature="e#4413#5104#0" />
+            <element signature="e#5150#5589#0" />
+            <element signature="e#3038#3094#0" />
+            <element signature="e#8361#39151#0" />
             <element signature="e#2766#5720#0" />
             <element signature="e#5733#6025#0" />
             <element signature="e#5128#5222#0" />
             <element signature="e#6276#7018#0" />
-            <element signature="e#6905#8345#0" />
+            <element signature="e#12220#13667#0" />
             <element signature="e#8400#9078#0" />
             <element signature="e#9131#10894#0" />
             <element signature="e#11134#15317#0" />
             <element signature="e#16620#17989#0" />
             <element signature="e#21403#21893#0" />
+            <element signature="e#21924#22011#0" />
+            <element signature="e#22042#22120#0" />
+            <element signature="e#21926#22013#0" />
+            <element signature="e#22049#22136#0" />
+            <element signature="e#22174#22330#0" />
             <element signature="e#23528#24387#0" />
             <element signature="e#24506#24675#0" />
             <element signature="e#25019#25118#0" />
@@ -311,7 +354,16 @@
             <element signature="e#21305#21723#0" />
             <element signature="e#25754#25820#0" />
             <element signature="e#25866#25937#0" />
-            <element signature="e#23668#25061#0" />
+            <element signature="e#27262#28735#0" />
+            <element signature="e#26731#27545#0" />
+            <element signature="e#30001#31843#0" />
+            <element signature="e#31912#34818#0" />
+            <element signature="e#34895#35258#0" />
+            <element signature="e#34159#34573#0" />
+            <element signature="e#34756#35227#0" />
+            <element signature="e#36713#37517#0" />
+            <element signature="e#36656#37116#0" />
+            <element signature="e#38260#38932#0" />
           </folding>
         </state>
       </provider>

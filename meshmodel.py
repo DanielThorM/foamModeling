@@ -12,6 +12,14 @@ import math
 #tessellation .mesh_file_name=mesh_file_name
 #tessellation .mesh2D(elem_size=0.02)
 
+#importlib.reload(ts)
+#folderName = r'H:\thesis\linear\representative\S05R1\ID1'
+#mesh_file_name = folderName + r'\\test'
+#tessellation  = ts.Tessellation(folderName + r'\\nfrom_morpho-id1.tess')
+#tessellation .mesh_file_name=mesh_file_name
+#tessellation .mesh2D(elem_size=0.02)
+
+
 class NodeClass(object):
     def __init__(self, id_, coord):
         self.id_ = id_
@@ -33,6 +41,22 @@ class ShellElementClass(object):
         v2=coords[3]-coords[1]
         A1=np.linalg.norm(np.cross(v1, v2))/2.
         return abs(A1)
+
+    def on_plane(self, plane = None, loc = None):
+        plane_map={'x':0, 'y':1, 'z':2}
+        coords = np.array([node.coord for node in [self.nodes[node_id] for node_id in self.node_ids]])
+        for coord in coords:
+            if coord[plane_map[plane]] != loc:
+                return False
+        return True
+
+    def incedent_to_plane(self, plane = None, loc = None):
+        plane_map = {'x': 0, 'y': 1, 'z': 2}
+        coords = np.array([node.coord for node in [self.nodes[node_id] for node_id in self.node_ids]])
+        for coord in coords:
+            if coord[plane_map[plane]] == loc:
+                return True
+        return False
 
 class BeamElementClass(object):
     def __init__(self, nodes, id_, parent, node_ids):
@@ -61,6 +85,22 @@ class BeamElementClass(object):
             return self.find_volume()
         else:
             return self.length * self.csa
+
+    def on_plane(self, plane = None, loc = None):
+        plane_map={'x':0, 'y':1, 'z':2}
+        coords = np.array([node.coord for node in [self.nodes[node_id] for node_id in self.node_ids]])
+        for coord in coords:
+            if coord[plane_map[plane]] != loc:
+                return False
+        return True
+
+    def incedent_to_plane(self, plane = None, loc = None):
+        plane_map={'x':0, 'y':1, 'z':2}
+        coords = np.array([node.coord for node in [self.nodes[node_id] for node_id in self.node_ids]])
+        for coord in coords:
+            if coord[plane_map[plane]] == loc:
+                return True
+        return False
 
 class SolidElementClass(object):
     def __init__(self, nodes, id_, parent, node_ids):
@@ -91,6 +131,18 @@ class SurfPartClass(object):
 
     def set_volume(self, volume):
         self.tt = volume/self.area
+
+    def on_plane(self, plane, loc):
+        for elem_id in self.elem_ids[:1]: # Only one element needed for check.
+            if self.shell_elements[elem_id].on_plane(plane, loc) != True:
+                return False
+        return True
+
+    def incident_to_plane(self, plane, loc):
+        for elem_id in self.elem_ids:
+            if self.shell_elements[elem_id].incident_to_plane(plane, loc) == True:
+                return True
+        return False
 
 class BeamPartClass(object):
     def __init__(self, beam_elements, id_, elem_ids):
@@ -158,7 +210,19 @@ class BeamPartClass(object):
     def find_volume(self):
         return sum([self.beam_elements[elem_id].find_volume() for elem_id in self.elem_ids])
 
-class PeriodicLSDynaGeometry(object):
+    def on_plane(self, plane, loc):
+        for elem_id in self.elem_ids[:1]: # Only one element needed for check.
+            if self.beam_elements[elem_id].on_plane(plane, loc) != True:
+                return False
+        return True
+
+    def incident_to_plane(self, plane, loc):
+        for elem_id in self.elem_ids:
+            if self.beam_elements[elem_id].incident_to_plane(plane, loc) == True:
+                return True
+        return False
+
+class LSDynaGeometry(object):
     '''Takes inn a tessGeom object that must have been meshed and have an assigned meshFileName'''
     def __init__(self, tessellation, debug=False):
         self.tessellation=copy.deepcopy(tessellation)
@@ -172,22 +236,22 @@ class PeriodicLSDynaGeometry(object):
         self.rho = None
         self.phi = None
         self.surfs = self.find_surfs()
-        self.vertex_to_node, self.node_to_vertex = self.find_vertex_node_map()
         self.nodes_on_edges = self.find_nodes_on_edges()
+        self.beam_elements = self.find_beam_elements()
+        self.beams = self.find_beams()
         if self.tessellation.periodic == True:
+            self.vertex_to_node, self.node_to_vertex = self.find_vertex_node_map()
             self.find_vertex_nodes_periodicity()
             self.find_edge_nodes_periodicity()
             self.transfer_surfaces()
-            self.beam_elements = self.find_beam_elements()
-            self.beams = self.find_beams()
-
-
-        if debug == False:
-            #self.domain_size = self.tessellation.domain_size
-            self.find_slave_surfs()
-            self.find_slave_beams()
             self.beam_oriention = self.find_beam_oriention()
             self.solids = self.find_reference_elements()
+
+        if self.tessellation.periodic == False:
+            self.delete_elements_on_sides(save_corner_beams=False, save_side_beams=False)
+        if debug == False:
+            pass
+
 
     def load_mesh(self):
         #self.node_tup = namedtuple('node', ['n', 'coords'])
@@ -262,7 +326,7 @@ class PeriodicLSDynaGeometry(object):
         return vertex_to_node, node_to_vertex
 
     def find_nodes_on_edges(self):
-        if self.tessellation.periodic == False: raise Exception('Invalid action for current tesselation')
+        #if self.tessellation.periodic == False: raise Exception('Invalid action for current tesselation')
         edge_dict = {}
         for edge in self.tessellation.edges.values():  # Have to consider two edges for connected surfaces
             surf_nodes = []
@@ -485,10 +549,9 @@ class PeriodicLSDynaGeometry(object):
 
     def find_slave_beams(self):
         return [part.id_ for part in self.beams.values() if part.slave == True]
-    ##########################################################################
-    # Find node pairs and directions
-    ##########################################################################
+
     def find_reference_elements(self, ref_element_size=0.1):
+        if self.tessellation.periodic == False: raise Exception('Invalid action for current tesselation')
         elem_counter = 1
         self.solid_num_offset += 10
         ref_elem_dict = {}
@@ -500,7 +563,7 @@ class PeriodicLSDynaGeometry(object):
             self.last_node_key += 1
             self.nodes[self.last_node_key] = NodeClass(self.last_node_key, ref_loc + offset)
             node_list.append(self.last_node_key)
-            ref_elem_dict[elem_counter] = SolidElementClass(self.nodes, elem_counter, self.solid_num_offset, node_list)
+        ref_elem_dict[elem_counter] = SolidElementClass(self.nodes, elem_counter, self.solid_num_offset, node_list)
         for i, location in enumerate(self.tessellation.domain_size): #location = self.domain_size[0]
             elem_counter += 1
             ref_loc = np.array([0., 0., 0.])
@@ -512,4 +575,225 @@ class PeriodicLSDynaGeometry(object):
             ref_elem_dict[elem_counter] = SolidElementClass(self.nodes, elem_counter, self.solid_num_offset, node_list)
         return ref_elem_dict
 
-self=PeriodicLSDynaGeometry(tessellation=tessellation, debug=True)
+    ##########################################################################
+    # Linear model
+    ##########################################################################
+    def find_corner_nodes(self):
+        if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
+        corner_nodes = [0] * 8
+        x_size, y_size, z_size = list(self.tessellation.domain_size)
+        corner_locs = [[0.0,0.0,0.0],
+                       [x_size, 0.0, 0.0],
+                       [x_size, y_size, 0.0],
+                       [0.0, y_size, 0.0],
+                       [0.0, 0.0, z_size],
+                       [x_size, 0.0, z_size],
+                       [x_size, y_size, z_size],
+                       [0.0, y_size, z_size]]
+        for node in self.nodes.values(): #node= list(self.nodes.values())[0]
+            for i, corner_loc in enumerate(corner_locs):
+                if self.compare_arrays(node.coord,  corner_loc):
+                    corner_nodes[i] = node.id_
+        if 0 in corner_nodes:
+            raise Exception('Could not find all eight corner nodes')
+        return corner_nodes
+
+    def delete_elements_on_sides(self, planes=['x', 'y', 'z'], save_side_beams=False, save_corner_beams=False):
+        if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
+        del_elems=[]
+        plane_map={'x':0, 'y':1, 'z':2}
+        for plane in planes: #plane = 'x'
+            for plane_loc in [0.0, self.tessellation.domain_size[plane_map[plane]]]: #plane_loc=0.0
+                for elem in self.shell_elements.values(): #elem = list(self.shell_elements.values())[0]
+                    if elem.on_plane(plane, plane_loc):
+                         del_elems.append(elem.id_)
+
+        shell_nodes = np.array([self.shell_elements[del_elem].node_ids for del_elem in del_elems]).flatten()
+        edge_nodes = np.array([edge_node for edge_nodes in self.nodes_on_edges.values() for edge_node in edge_nodes])
+        for del_elem in set(del_elems):
+            del self.shell_elements[del_elem]
+
+        filtered_del_node_list=set(shell_nodes)-set(edge_nodes)
+        for node_id in filtered_del_node_list:
+            del self.nodes[node_id]
+
+        self.surfs = self.find_surfs()
+
+        # Beams
+
+        del_elems = []
+        plane_map = {'x': 0, 'y': 1, 'z': 2}
+        for elem in self.beam_elements.values(): #elem = list(self.beam_elements.values())[0]
+            in_plane_threshold = 1
+            if save_side_beams == True:
+                in_plane_threshold = 2
+            if save_corner_beams == True:
+                in_plane_threshold = 3
+            true_counter = []
+            for plane in planes:
+                for plane_loc in [0.0, self.tessellation.domain_size[plane_map[plane]]]:
+                        true_counter.append(elem.on_plane(plane, plane_loc))
+            if sum(true_counter) >= in_plane_threshold:
+                del_elems.append(elem.id_)
+
+        for del_elem in set(del_elems):
+            del self.beam_elements[del_elem]
+
+        self.beams = self.find_beams()
+
+    def create_side_elements(self, sides=['x', 'y', 'z']):
+        if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
+        new_coord_systems = []
+        part_id = int(max(self.surfs.keys()))
+        self.corner_nodes = self.find_corner_nodes()
+        if 'x' in [side.lower() for side in sides]:
+            self.last_element_key += 1
+            part_id += 10
+            node_ids = [self.corner_nodes[0], self.corner_nodes[3], self.corner_nodes[7], self.corner_nodes[4]]
+            new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+            self.shell_elements[self.last_element_key] = ShellElementClass(
+                self.nodes, self.last_element_key, part_id, node_ids
+            )
+
+            self.last_element_key += 1
+            part_id += 10
+            node_ids = [self.corner_nodes[1], self.corner_nodes[5], self.corner_nodes[6], self.corner_nodes[2]]
+            new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+            self.shell_elements[self.last_element_key] = ShellElementClass(
+                self.nodes, self.last_element_key, part_id, node_ids
+            )
+
+
+        elif 'y' in [side.lower() for side in sides]:
+            self.last_element_key += 1
+            part_id += 10
+            node_ids = [self.corner_nodes[0], self.corner_nodes[4], self.corner_nodes[5], self.corner_nodes[1]]
+            new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+            self.shell_elements[self.last_element_key] = ShellElementClass(
+                self.nodes, self.last_element_key, part_id, node_ids
+            )
+
+            self.last_element_key += 1
+            part_id += 10
+            node_ids = [self.corner_nodes[2], self.corner_nodes[6], self.corner_nodes[7], self.corner_nodes[3]]
+            new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+            self.shell_elements[self.last_element_key] = ShellElementClass(
+                self.nodes, self.last_element_key, part_id, node_ids
+            )
+        elif 'z' in [side.lower() for side in sides]:
+            self.last_element_key += 1
+            part_id += 10
+            node_ids = [self.corner_nodes[0], self.corner_nodes[1], self.corner_nodes[2], self.corner_nodes[3]]
+            new_coord_systems.append([node_ids[0], node_ids[1],node_ids[3]])
+            self.shell_elements[self.last_element_key] = ShellElementClass(
+                self.nodes, self.last_element_key, part_id, node_ids
+            )
+
+            self.last_element_key += 1
+            part_id += 10
+            node_ids = [self.corner_nodes[4], self.corner_nodes[7], self.corner_nodes[6], self.corner_nodes[5]]
+            new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+            self.shell_elements[self.last_element_key] = ShellElementClass(
+                self.nodes, self.last_element_key, part_id, node_ids
+            )
+        return new_coord_systems
+
+    def create_node_list_in_plane(self, plane='z', plane_loc=0.0):
+        if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
+        node_list_in_plane = []
+        plane_map = {'x':0, 'y':1, 'z':2}
+        for node in self.nodes.values():
+            if node.coord[plane_map[plane.lower()]] == plane_loc:
+                node_list_in_plane.append(node.id_)
+        return node_list_in_plane
+
+    def find_side_beams(self, planes=['x', 'y', 'z']): #Finding beams laying on specified planes
+        if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
+        plane_map = {'x': 0, 'y': 1, 'z': 2}
+        side_beams = []
+        for plane in planes:
+            for plane_loc in [0.0, self.tessellation.domain_size[plane_map[plane]]]:
+                temp_side_beams=[]
+                for beam in self.beams.values():
+                    if beam.on_plane(plane, plane_loc):
+                        temp_side_beams.append(beam.id_)
+                side_beams.append(list(set(temp_side_beams)))
+        return side_beams
+
+    def find_side_incident_beam(self, planes=['x', 'y', 'z']): #Finding beams which have one or more nodes on specified planes
+        if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
+        plane_map = {'x': 0, 'y': 1, 'z': 2}
+        side_beams = []
+        for plane in planes:
+            for plane_loc in [0.0, self.tessellation.domain_size[plane_map[plane]]]:
+                for beam in self.beams.values():
+                    temp_side_beams = []
+                    if beam.incident_to_plane(plane, plane_loc):
+                        temp_side_beams.append(beam.id_)
+                side_beams.append(list(set(temp_side_beams)))
+
+        return side_beams
+
+    def find_beam_node_on_side(self, planes=['x', 'y', 'z']):
+        if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
+        plane_map = {'x': 0, 'y': 1, 'z': 2}
+        side_beam_nodes = []
+        for plane in planes:
+            for plane_loc in [0.0, self.tessellation.domain_size[plane_map[plane]]]:
+                temp_nodes = []
+                for beam in self.beams.values():
+                    if beam.incident_to_plane(plane, plane_loc):
+                        for elem in beam.elem_ids:
+                            for node_id in self.beam_elements[elem].node_ids:
+                                if self.nodes[node_id].coord[plane_map[plane]] == plane_loc:
+                                    temp_nodes.append(node_id)
+                side_beam_nodes.append(list(set(temp_nodes)))
+        return side_beam_nodes
+
+    def find_side_surfs(self, planes=['x', 'y', 'z']): #Finding beams laying on specified planes
+        if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
+        plane_map = {'x': 0, 'y': 1, 'z': 2}
+        side_surfs = []
+        for plane in planes:
+            for plane_loc in [0.0, self.tessellation.domain_size[plane_map[plane]]]:
+                temp_side_surfs=[]
+                for surf in self.surfs.values():
+                    if surf.on_plane(plane, plane_loc):
+                        temp_side_surfs.append(surf.id_)
+                side_surfs.append(list(set(temp_side_surfs)))
+        return side_surfs
+
+    def find_side_incident_surfs(self, planes=['x', 'y', 'z']):
+        if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
+        plane_map = {'x': 0, 'y': 1, 'z': 2}
+        side_surfs=[]
+        for plane in planes:
+            for plane_loc in [0.0, self.tessellation.domain_size[plane_map[plane]]]:
+                temp_side_surfs=[]
+                for surf in self.surfs.values():
+                    if surf.incident_to_plane(plane, plane_loc):
+                        temp_side_surfs.append(surf.id_)
+                side_surfs.append(list(set(temp_side_surfs)))
+        return side_surfs
+
+    def find_parts_for_box_contact(self, planes=['x', 'y', 'z']):
+        if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
+        side_contact_part_list = self.find_side_incident_surfs(planes)
+        side_plane_part_list = self.find_side_surfs(planes)
+        volumes_on_side=[]
+        for side_contact_parts, side_plane_parts in zip(side_contact_part_list, side_plane_part_list):
+            volumes_on_side.append([])
+            side_part_list=[int((surf_id-self.surf_num_offset)/10) for surf_id in side_contact_parts if surf_id not in side_plane_part_list]
+            for volume_id, volume in zip(self.tessellation.polyhedrons.keys(), self.tessellation.polyhedrons.values()):
+                if len(list(set(map(abs, volume.faces)).intersection(side_part_list)))>=2:
+                    volumes_on_side[-1].append(volume_id)
+        edge_parts_pr_side = [] ################# Start from here
+        for volumes in volumes_on_side:
+            temp_side_parts=[]
+            for volume in volumes:
+                mapped_surfs=list(set(abs(np.array(self.tessellation.polyhedrons[volume].faces)*10)+self.surf_num_offset))
+                temp_side_parts.extend(mapped_surfs)
+            edge_parts_pr_side.append(list(set(temp_side_parts).intersection(self.surfs.keys())))
+        return edge_parts_pr_side
+
+self=LSDynaGeometry(tessellation=tessellation, debug=True)
