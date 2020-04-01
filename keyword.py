@@ -1731,7 +1731,7 @@ class BoundaryConditions(): #
                     self.keyword.boundary_spc_set(bspcid=(i + 501), nsid=(i + 501), dofx=0, dofy=0, dofz=0, dofrx=1, dofry=1,
                                                 dofrz=0, cid=(i + 1))
         corner_nodes = self.mesh_geometry.corner_nodes
-        self.def_grad_prescription(def_gradient, corner_nodes, disp_type='vel')
+        self.def_grad_prescription(def_gradient, corner_nodes)
         self.keyword.database_hist_node(nids=self.mesh_geometry.corner_nodes)
         return self.keyword
 
@@ -1848,11 +1848,11 @@ class BoundaryConditions(): #
         else:
             raise Exception('Invalid sorting key: {}. Choose "paired","identity" or "none" '.format(sorting))
 
-    def match_nid_coef(self, nid_list, coef_list, ref_node=None):
-        temp_list = [[nid, coef] for nid, coef in zip(nid_list, coef_list) if coef != 0 and nid != ref_node]
+    def match_nid_coef(self, nid_list, coeff_list, ref_node=None):
+        temp_list = [[nid, coeff] for nid, coeff in zip(nid_list, coeff_list) if coeff != 0 and nid != ref_node]
         temp_nid_list = list(map(int, np.array(temp_list)[:,0]))
-        temp_coef_list = list(np.array(temp_list)[:,1])
-        return temp_nid_list, temp_coef_list
+        temp_coeff_list = list(np.array(temp_list)[:,1])
+        return temp_nid_list, temp_coeff_list
 
     def periodic_linear_local(self, def_gradient):
         constrained_id_counter=9000001
@@ -1886,7 +1886,7 @@ class BoundaryConditions(): #
         #####################################################################
         #Element displacemente
         #####################################################################
-        self.def_grad_prescription(def_gradient, corner_ref_nodes, disp_type='disp')
+        self.def_grad_prescription(def_gradient, corner_ref_nodes)
         self.keyword.databaseHISTNODE(nid=[node.n for node in corner_ref_nodes]+[origo_ref_nodes[0].n])
         return self.keyword
 
@@ -1929,7 +1929,8 @@ class BoundaryConditions(): #
         #####################################################################
         # Element displacemente
         #####################################################################
-        self.def_grad_prescription(def_gradient, [ref_elem.node_ids[0] for ref_elem in ref_elements], disp_type='vel', disp_node_set = [ref_elem.node_ids[1:] for ref_elem in ref_elements] )
+        self.def_grad_prescription(def_gradient, [ref_elem.node_ids[0] for ref_elem in ref_elements],
+                                   disp_node_set=[ref_elem.node_ids[1:] for ref_elem in ref_elements])
         self.keyword.database_hist_node(nids=ref_nodes)
         self.keyword.set_node_list(nsid=888888 - 1, node_list=ref_elements[0].node_ids[1:])
         self.keyword.database_nodfor_group(nsid=888888 - 1)
@@ -1938,6 +1939,6 @@ class BoundaryConditions(): #
             self.keyword.database_nodfor_group(nsid=888888 + i)
 
         return self.keyword
-    
+
 keyword = Keyword(r'H:\thesis\periodic\representative\S05R1\ID1\testKey.key')
 self = BoundaryConditions(keyword, mesh_geometry)
