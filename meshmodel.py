@@ -7,10 +7,10 @@ import math
 #importlib.reload(ts)
 #folderName = r'H:\thesis\periodic\representative\S05R1\ID1'
 #mesh_file_name = folderName + r'\\test'
-#tessellation  = ts.Tessellation(folderName + r'\\nfrom_morpho-id1.tess')
-#tessellation .regularize(n=int(len(self.edges.keys())/2))
-#tessellation .mesh_file_name=mesh_file_name
-#tessellation .mesh2D(elem_size=0.02)
+#tessellation = ts.Tessellation(folderName + r'\\nfrom_morpho-id1.tess')
+#tessellation.regularize(n=int(len(tessellation.edges.keys())/2))
+#tessellation.mesh_file_name=mesh_file_name
+#tessellation.mesh2D(elem_size=0.02)
 
 #importlib.reload(ts)
 #folderName = r'H:\thesis\linear\representative\S05R1\ID1'
@@ -416,7 +416,7 @@ class LSDynaGeometry(object):
                     if master_node_id not in master_part_edge_nodes:
                         slave_node_id = new_node_map_dict[master_node_id]
                         slave_coord =  self.nodes[master_node_id].coord + periodicity
-                        self.nodes[master_node_id].master_to.append([slave_node_id]
+                        self.nodes[master_node_id].master_to.extend([slave_node_id]
                                                                         + unit_periodicity)
                         self.nodes[slave_node_id] = NodeClass(slave_node_id, slave_coord)
                         self.nodes[slave_node_id].slave_to = [master_node_id] + unit_periodicity
@@ -571,6 +571,7 @@ class LSDynaGeometry(object):
             for offset in elementOffset:
                 self.last_node_key += 1
                 self.nodes[self.last_node_key] = NodeClass(self.last_node_key, ref_loc + offset)
+                node_list.append(self.last_node_key)
             ref_elem_dict[elem_counter] = SolidElementClass(self.nodes, elem_counter, self.solid_num_offset, node_list)
         return ref_elem_dict
 
@@ -819,7 +820,7 @@ class LSDynaGeometry(object):
             for direction in set([0,1,2])-set([plane_map[plane]]):
                 self.nodes[node].coord[direction] += offset_direction[i][direction]*offset[direction]
 
-mesh_geometry=LSDynaGeometry(tessellation=tessellation, debug=True)
-mesh_geometry.create_side_elements()
+mesh_geometry=LSDynaGeometry(tessellation=tessellation)
+#mesh_geometry.create_side_elements()
 #mesh_geometry.increase_side_plate_dim('z')
 #mesh_geometry.nodes[1].coord

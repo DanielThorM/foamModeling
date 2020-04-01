@@ -491,16 +491,16 @@ class Keyword(object):
         line_block.append(self.format_key_line(nsid))
         self.submit_block(line_block)
 
-    def database_hist_node(self, nid):
+    def database_hist_node(self, nids):
         line_block = ['*DATABASE_HISTORY_NODE\n']
         line_block.append(
             '$#               id1                 id2                 id3                 id4                 id5                 id6                 id7                 id8\n')
-        k, m = divmod(len(nid), 8)
+        k, m = divmod(len(nids), 8)
         if m != 0:
-            nid.extend([0] * (8 - m))
+            nids.extend([0] * (8 - m))
             k = k + 1
         for i in range(k):
-            line_block.append(self.format_key_line(nid[8 * i:8 * (i + 1)]))
+            line_block.append(self.format_key_line(nids[8 * i:8 * (i + 1)]))
         self.submit_block(line_block)
 
     ###########################################
@@ -1732,16 +1732,11 @@ class BoundaryConditions(): #
                                                 dofrz=0, cid=(i + 1))
         corner_nodes = self.mesh_geometry.corner_nodes
         self.def_grad_prescription(def_gradient, corner_nodes, disp_type='vel')
-        self.keyword.database_hist_node(nid=self.mesh_geometry.corner_nodes)
-        # for i, nodeset in enumerate(faceNodesList):
-        #    self.keyword.setNodeList(nsid=401 + i,
-        # node_list=nodeset)
-        #    self.keyword.databaseNODFORGroup(nsid=401 + i)
-        # self.keyword.databaseNCFORC(dt=self.keyword.endtim / 200.)
-
+        self.keyword.database_hist_node(nids=self.mesh_geometry.corner_nodes)
         return self.keyword
 
-    def def_grad_prescription(self, def_gradient, corner_nodes, disp_type='vel', disp_node_set = None):
+    def def_grad_prescription(self, def_gradient, corner_nodes, disp_node_set = None):
+        disp_type = self.disp_type
         for i, node in enumerate(corner_nodes):
             coords = self.mesh_geometry.nodes[node].coord
             if disp_node_set != None:
@@ -1749,12 +1744,13 @@ class BoundaryConditions(): #
             if len(def_gradient.shape) == 2:
                 u_gradient = def_gradient - np.identity(3)
                 u_disp = u_gradient.dot(coords)
+                time_inc = self.keyword.endtim / len(du_disp)
                 for j, node_disp in enumerate(u_disp):
                     # (self, lcid, dist, tstart, tend, triseFrac=0.1, v0=0.0)
                     if disp_type == 'disp':
                         vad=2
-                        self.keyword.define_curve(lcid=10 * (i + 1) + (j + 1), abscissaList=[0.0, time_inc],
-                                                  ordinateList=[0, abs(node_disp)])
+                        self.keyword.define_curve(lcid=10 * (i + 1) + (j + 1), abscissas=[0.0, time_inc],
+                                                  ordinates=[0, abs(node_disp)])
                     elif disp_type == 'vel':
                         vad=0
                         self.keyword.define_curve_smooth(lcid=10 * (i + 1) + (j + 1), dist=abs(node_disp), tstart=0.0,
@@ -1786,8 +1782,8 @@ class BoundaryConditions(): #
                         if disp_type == 'disp':
                             vad = 2
                             self.keyword.define_curve(lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
-                                                      abscissaList=[0.0, time_inc],
-                                                      ordinateList=[0, abs(node_disp)])
+                                                      abscissas=[0.0, time_inc],
+                                                      ordinates=[0, abs(node_disp)])
                         elif disp_type == 'vel':
                             vad = 0
                             self.keyword.define_curve_smooth(lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
@@ -1803,11 +1799,145 @@ class BoundaryConditions(): #
                                                                         sf=np.sign(node_disp), birth=k * time_inc,
                                                                         death=(k + 1) * time_inc)
                         else:
-                            self.keyword.prescribeBoundaryMotionSet(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                            self.keyword.prescribe_boundary_motion_set(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
                                                                     nsid=10 + 10 * i, dof=(j + 1),
                                                                     vad=vad, lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
                                                                     sf=np.sign(node_disp), birth=k * time_inc,
                                                                     death=(k + 1) * time_inc)
+    ##################################################################################3
+    #Periodic
+    ##################################################################################################################
 
-keyword = Keyword(r'H:\thesis\linear\representative\S05R1\ID1\testKey.key')
+    def get_nid_list(self, master_node, slave_nodes, corner_ref_nodes, origo_ref_nodes):
+        slave_node_ids = [slave_node[0] for slave_node in slave_nodes]
+        corner_ref_nodes = [node for cnode, ref_node in zip(corner_ref_nodes, origo_ref_nodes) for node in [cnode, ref_node]]
+        return [master_node] + slave_node_ids + corner_ref_nodes #nidList=[master_node] + slave_nod_ids + corner_ref_nodes
+
+    def get_coef_list(self, nid_list, slave_nodes, sorting='paired'):
+        coef_list_list = []
+        for slaveNode in slave_nodes:
+            periodicity = slaveNode[1:]
+            coef_list = [1]
+            for nid in nid_list[1:-6]:
+                if nid == slaveNode[0]:
+                    coef_list.append(-1)
+                else:
+                    coef_list.append(0)
+            for i, period in enumerate(periodicity):
+                if period == 0:
+                    coef_list.extend([0, 0])
+                else:
+                    coef_list.extend([1 * np.sign(period), -1 * np.sign(period)])
+            coef_list_list.append(coef_list)
+
+        coef_list_list = np.array(coef_list_list)
+        if sorting == 'paired':
+            for j in range(len(coef_list_list) - 1):
+                for i, coef_list in enumerate(coef_list_list[j + 1:]):
+                    coef_list_list[i + j + 1] = coef_list - coef_list_list[j]
+            return coef_list_list
+        elif sorting == 'identity':
+            for j in range(len(coef_list_list) - 1):
+                for i, coef_list in enumerate(coef_list_list[j + 1:]):
+                    coef_list_list[i + j + 1] = coef_list - coef_list_list[j]
+            for j in range(len(coef_list_list) - 1):
+                coef_list_list[-(j + 2)] = coef_list_list[-(j + 2)] + coef_list_list[-(j + 1)]
+            return coef_list_list
+        elif sorting == 'none':
+            return coef_list_list
+        else:
+            raise Exception('Invalid sorting key: {}. Choose "paired","identity" or "none" '.format(sorting))
+
+    def match_nid_coef(self, nid_list, coef_list, ref_node=None):
+        temp_list = [[nid, coef] for nid, coef in zip(nid_list, coef_list) if coef != 0 and nid != ref_node]
+        temp_nid_list = list(map(int, np.array(temp_list)[:,0]))
+        temp_coef_list = list(np.array(temp_list)[:,1])
+        return temp_nid_list, temp_coef_list
+
+    def periodic_linear_local(self, def_gradient):
+        constrained_id_counter=9000001
+        ref_elements = list(self.mesh_geometry.solids.values())
+        ref_nodes = [ref_elem.node_ids[0] for ref_elem in ref_elements]
+        self.keyword.boundary_spc_node(bspcid=9999, nid=ref_nodes[0], dofx=1, dofy=1, dofz=1)
+        corner_ref_nodes = ref_nodes[1:]
+        origo_ref_nodes = [ref_nodes[0]]*3
+        used_nodes_list=[]
+        self.keyword.comment_block('Periodic constraints')
+        master_node_list = [node.id_ for node in self.mesh_geometry.nodes.values() if node.master_to != []]
+        for master_node in master_node_list:
+            temp_slave_node = self.mesh_geometry.nodes[master_node].master_to
+            slave_nodes = [temp_slave_node[i*4:i*4+4] for i in range(len(temp_slave_node[::4]))]
+            nid_list = self.get_nid_list(master_node, slave_nodes, corner_ref_nodes, origo_ref_nodes)
+            for nid in nid_list[:-6]:
+                if nid in used_nodes_list:
+                    print(nid_list)
+                    raise Exception('Node {} used twice in relation'.format(nid))
+                else:
+                    used_nodes_list.append(nid)
+            used_nodes_list.append(master_node)
+            coeff_list = self.get_coef_list(nid_list, slave_nodes, sorting='paired')
+            for coeffs in coeff_list: #coeffs = coeff_list[0]
+                temp_nids, temp_coeffs = self.match_nid_coef(nid_list, coeffs, ref_node=ref_nodes[0])
+                for direction in range(0, 3):
+                    self.keyword.constrained_linear_local(lcid=constrained_id_counter, nidList=temp_nids,
+                                                        coefList=temp_coeffs, direction=direction + 1)
+                    constrained_id_counter += 1
+
+        #####################################################################
+        #Element displacemente
+        #####################################################################
+        self.def_grad_prescription(def_gradient, corner_ref_nodes, disp_type='disp')
+        self.keyword.databaseHISTNODE(nid=[node.n for node in corner_ref_nodes]+[origo_ref_nodes[0].n])
+        return self.keyword
+
+    def periodic_multiple_global(self, def_gradient):
+        constrained_id_counter = 9000001
+        ref_elements = list(self.mesh_geometry.solids.values())
+        ref_nodes = [ref_elem.node_ids[0] for ref_elem in ref_elements]
+        corner_ref_nodes = ref_nodes[1:]
+        origo_ref_nodes = [ref_nodes[0]] * 3
+        used_nodes_list = []
+        global_constr_list = [[], [], []]
+        self.keyword.comment_block('Periodic constraints')
+        master_node_list = [node.id_ for node in self.mesh_geometry.nodes.values() if node.master_to != []]
+        for master_node in master_node_list:
+            temp_slave_node = self.mesh_geometry.nodes[master_node].master_to
+            slave_nodes = [temp_slave_node[i * 4:i * 4 + 4] for i in range(len(temp_slave_node[::4]))]
+            nid_list = self.get_nid_list(master_node, slave_nodes, corner_ref_nodes, origo_ref_nodes)
+            for nid in nid_list[:-6]:
+                if nid in used_nodes_list:
+                    print(nid_list)
+                    raise Exception('Node {} used twice in relation'.format(nid))
+                else:
+                    used_nodes_list.append(nid)
+            used_nodes_list.append(master_node)
+            coeff_list = self.get_coef_list(nid_list, slave_nodes, sorting='identity')
+            for coeffs in coeff_list:
+                temp_nids, temp_coeffs = self.match_nid_coef(nid_list, coeffs, ref_node=ref_nodes[0])
+                for direction in range(0, 3):
+                    temp_global_dict = {}
+                    temp_global_dict['nmp'] = len(temp_nids)
+                    temp_global_dict['nid_list'] = temp_nids
+                    temp_global_dict['coeff_list'] = temp_coeffs
+                    global_constr_list[direction].append(temp_global_dict)
+
+        for direction in range(0, 3):
+            self.keyword.constrainedMultipleGlobal(id=constrained_id_counter, constr_list=global_constr_list[direction],
+                                                   direction=direction + 1)
+            constrained_id_counter += 1
+
+        #####################################################################
+        # Element displacemente
+        #####################################################################
+        self.def_grad_prescription(def_gradient, [ref_elem.node_ids[0] for ref_elem in ref_elements], disp_type='vel', disp_node_set = [ref_elem.node_ids[1:] for ref_elem in ref_elements] )
+        self.keyword.database_hist_node(nids=ref_nodes)
+        self.keyword.set_node_list(nsid=888888 - 1, node_list=ref_elements[0].node_ids[1:])
+        self.keyword.database_nodfor_group(nsid=888888 - 1)
+        for i in range(3):
+            self.keyword.set_node_list(nsid=888888 + i, node_list=ref_elements[i+1].node_ids[1:])
+            self.keyword.database_nodfor_group(nsid=888888 + i)
+
+        return self.keyword
+    
+keyword = Keyword(r'H:\thesis\periodic\representative\S05R1\ID1\testKey.key')
 self = BoundaryConditions(keyword, mesh_geometry)
