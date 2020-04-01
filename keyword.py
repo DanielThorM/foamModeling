@@ -1940,5 +1940,10 @@ class BoundaryConditions(): #
 
         return self.keyword
 
+    def single_element(self, def_gradient):
+        corner_nodes = self.mesh_geometry.corner_nodes
+        self.def_grad_prescription(self, def_gradient, corner_nodes)
+        self.keyword.database_hist_node(nids=corner_nodes)
+        return self.keyword
 keyword = Keyword(r'H:\thesis\periodic\representative\S05R1\ID1\testKey.key')
 self = BoundaryConditions(keyword, mesh_geometry)

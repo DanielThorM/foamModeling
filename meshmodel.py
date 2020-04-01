@@ -222,10 +222,10 @@ class BeamPartClass(object):
                 return True
         return False
 
-class LSDynaGeometry(object):
+class FoamModel(object):
     '''Takes inn a tessGeom object that must have been meshed and have an assigned meshFileName'''
     def __init__(self, tessellation, debug=False):
-        self.tessellation=copy.deepcopy(tessellation)
+        self.tessellation=tessellation
         #if self.tessellation.periodic == False: raise Exception('Invalid action for current tesselation')
         self.shell_elements = self.load_mesh()
         self.surf_num_offset = 2000000
@@ -244,7 +244,7 @@ class LSDynaGeometry(object):
             self.find_vertex_nodes_periodicity()
             self.find_edge_nodes_periodicity()
             self.transfer_surfaces()
-            self.solids = self.find_reference_elements()
+            self.solid_elements = self.find_reference_elements()
 
         if self.tessellation.periodic == False:
             self.delete_elements_on_sides(save_corner_beams=False, save_side_beams=False)
@@ -820,7 +820,31 @@ class LSDynaGeometry(object):
             for direction in set([0,1,2])-set([plane_map[plane]]):
                 self.nodes[node].coord[direction] += offset_direction[i][direction]*offset[direction]
 
-mesh_geometry=LSDynaGeometry(tessellation=tessellation)
+class SolidElement(object):
+    def __init__(self):
+        self.nodes={}
+        self.solid_elements={}
+        self.create_element()
+
+    def create_element(self, ref_element_size = 1.0):
+        last_node_key = 1
+        elem_counter = 1
+        part_num = 1
+        node_list = []
+        element_offset = np.array(
+            [[0, 0, 0], [ref_element_size, 0, 0], [ref_element_size, ref_element_size, 0], [0, ref_element_size, 0],
+             [0, 0, ref_element_size], [ref_element_size, 0, ref_element_size],
+             [ref_element_size, ref_element_size, ref_element_size], [0, ref_element_size, ref_element_size]])
+        for offset in element_offset:
+            last_node_key += 1
+            self.nodes[last_node_key] = NodeClass(last_node_key, ref_loc + offset)
+            node_list.append(last_node_key)
+        self.corner_nodes = node_list
+        self.solid_elements[part_num] = SolidElementClass(self.nodes, elem_counter, part_num, node_list)
+
+
+
+mesh_geometry=FoamModel(tessellation=tessellation)
 #mesh_geometry.create_side_elements()
 #mesh_geometry.increase_side_plate_dim('z')
 #mesh_geometry.nodes[1].coord
