@@ -1227,16 +1227,16 @@ class Keyword(object):
             self.format_key_line([igap, ignore, 0.0000000000e+000, 0.0000000000e+000, ' ', ' ', 0.0000000000e+000, 0]))
         self.submit_block(line_block)
 
-    def contact_automatic_single_surface_mortar_id(self, cid, ssid=0, sstyp=0, fs=-1.0, fd=-1.0, dc=0.0, soft=0, ignore=0,
-                                                   depth=2, igap=1, shlthk=0, snlog=0, vdc=0):
+    def contact_automatic_single_surface_mortar_id(self, cid, ssid=0, sstyp=0, fs=-1.0, fd=-1.0, dc=-1.0, soft=0, ignore=0,
+                                                   depth=3, igap=1, snlog=0, vdc=0):
         line_block = ['*CONTACT_AUTOMATIC_SINGLE_SURFACE_MORTAR_ID\n']
         line_block.append(self.format_key_line([cid, 'Automatic contact full']))
         line_block.append(
             '$#              ssid                msid               sstyp               mstyp              sboxid              mboxid                 spr                 mpr\n')
-        line_block.append(self.format_key_line([ssid, 0, sstyp, 0, 0, 0, 1, 0]))
+        line_block.append(self.format_key_line([ssid, 0, sstyp, 0, 0, 0, 0, 0]))
         line_block.append(
             '$#                fs                  fd                  dc                  vc                 vdc              penchk                  bt                  dt\n')
-        line_block.append(self.format_key_line([fs, fd, dc, 0.0, 0.0, vdc, 0.0, 1.00000E20]))
+        line_block.append(self.format_key_line([fs, fd, dc, 0.0, vdc, 0, 0.0, 1.00000E20]))
         line_block.append(
             '$#               sfs                 sfm                 sst                 mst                sfst                sfmt                 fsf                 vsf\n')
         line_block.append(self.format_key_line([1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0]))
@@ -1247,7 +1247,7 @@ class Keyword(object):
         line_block.append(
             '$#            penmax              thkopt              shlthk               snlog                isym               i2d3d              sldthk              sldstf\n')
         line_block.append(
-            self.format_key_line([0.0000000000e+000, 1, shlthk, snlog, 0, 0, 0.0000000000e+000, 0.0000000000e+000]))
+            self.format_key_line([0.0000000000e+000, 0, 0, snlog, 0, 0, 0.0000000000e+000, 0.0000000000e+000]))
         line_block.append(
             '$#              igap              ignore        dprfac/mpar1        dtstif/mpar2             unused               unused              flangl             cid_rcf\n')
         line_block.append(
@@ -1699,16 +1699,16 @@ class BoundaryConditions(): #
         self.keyword.database_hist_node(nids=self.mesh_geometry.corner_nodes)
         return self.keyword
 
-    def def_grad_prescription(self, def_gradient, corner_nodes, disp_node_set = None):
+    def def_grad_prescription(self, def_gradient, corner_ref_nodes, disp_node_set = None):
         disp_type = self.keyword.disp_type
-        for i, node in enumerate(corner_nodes):
+        for i, node in enumerate(corner_ref_nodes):
             coords = self.mesh_geometry.nodes[node].coord
             if disp_node_set != None:
                 self.keyword.set_node_list(nsid=10 + 10 * i, node_list=disp_node_set[i])
             if len(def_gradient.shape) == 2:
                 u_gradient = def_gradient - np.identity(3)
                 u_disp = u_gradient.dot(coords)
-                time_inc = self.keyword.endtim / len(u_disp)
+                time_inc = self.keyword.endtim
                 for j, node_disp in enumerate(u_disp):
                     # (self, lcid, dist, tstart, tend, triseFrac=0.1, v0=0.0)
                     if disp_type == 'disp':
