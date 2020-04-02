@@ -836,7 +836,7 @@ class FoamModel(object):
             for direction in set([0,1,2])-set([plane_map[plane]]):
                 self.nodes[node].coord[direction] += offset_direction[i][direction]*offset[direction]
 
-class SolidElement(object):
+class SingleElement(object):
     def __init__(self):
         self.nodes={}
         self.solid_elements={}
@@ -847,6 +847,7 @@ class SolidElement(object):
         elem_counter = 1
         part_num = 1
         node_list = []
+        ref_loc = np.array([0,0,0])
         element_offset = np.array(
             [[0, 0, 0], [ref_element_size, 0, 0], [ref_element_size, ref_element_size, 0], [0, ref_element_size, 0],
              [0, 0, ref_element_size], [ref_element_size, 0, ref_element_size],
@@ -856,8 +857,8 @@ class SolidElement(object):
             self.nodes[last_node_key] = NodeClass(last_node_key, ref_loc + offset)
             node_list.append(last_node_key)
         self.corner_nodes = node_list
-        self.solid_elements[part_num] = SolidElementClass(self.nodes, elem_counter, part_num, node_list)
-
+        self.solid_elements[elem_counter] = SolidElementClass(self.nodes, elem_counter, part_num, node_list)
+        self.solids = SolidPartClass(self.solid_elements, part_num, [element.id_ for element in self.solid_elements.values() if element.parent == part_num])
 
 
 #mesh_geometry=FoamModel(tessellation=tessellation)
