@@ -11,7 +11,7 @@ class Keyword(object):
     # Blocks
     ########################################################
 
-    def write_nodes(self, nodes, tc=0, rc=0):
+    def node(self, nodes, tc=0, rc=0):
         line_block = ['*Node\n']
         line_block.append(
             '$#               nid                   x                   y                   z                  tc                  rc\n')
@@ -53,7 +53,7 @@ class Keyword(object):
             line_block.append(self.format_key_line([*list(elem.orientation)]))
         self.submit_block(line_block)
 
-    def element_beam_section_orientation(self, elements):
+    def element_beam_section07_orientation(self, elements):
         line_block = ['*ELEMENT_BEAM_SECTION_ORIENTATION\n']
         line_block.append(
             '$#               nid                 pid                  n1                  n2                  n3                  n4                  n5                  n6\n')
@@ -354,7 +354,7 @@ class Keyword(object):
     ###########################################
     # Database
     ################################################
-    def databaseGLSTAT(self, dt=None):
+    def database_glstat(self, dt=None):
         binary = 1
         lcur = 0
         ioopt = 1
@@ -563,14 +563,13 @@ class Keyword(object):
         line_block.append(self.format_key_line([secid, elform, 0]))
         self.submit_block(line_block)
 
-    def section_beam(self, secid, aa):
-        elform = 1
+    def section_beam(self, secid, csa=1.0, elform=1):
         shrf = 1.0
         qririd = 5.0
         cst = 1.0
         scoor = 0.0
         nsm = 0.0
-        ts1 = np.sqrt(aa * 4 / np.pi)
+        ts1 = np.sqrt(csa * 4 / np.pi)
         tt1 = 0
         nsloc = 0.0
         ntloc = 0.0
@@ -588,8 +587,8 @@ class Keyword(object):
     ###########################################
     # Material
     ################################################
-    def mat24_bilinear(self, mid, ro=9.20000E-10, e=1500.0, pr=0.3, sigy=20.,
-                               etan=1., fail=0.0, tdel=0.0, lcss=0, C=0, p=0):
+    def mat24(self, mid, ro=9.20000E-10, e=1500.0, pr=0.3, sigy=20.,
+                               etan=1., fail=0.0, tdel=0.0, lcss=0, c=0, p=0):
 
         line_block = ['*MAT_PIECEWISE_LINEAR_PLASTICITY_TITLE\n']
         line_block.append('linear - plasticity\n')
@@ -599,7 +598,7 @@ class Keyword(object):
 
         line_block.append(
             '$#                 c                   p                lcss                lcsr                  vp\n')
-        line_block.append(self.format_key_line([C, p, lcss, 0, 0.0]))
+        line_block.append(self.format_key_line([c, p, lcss, 0, 0.0]))
 
         line_block.append(
             '$#              eps1                eps2                eps3                eps4                eps5                eps6                eps7                eps8\n')
@@ -619,8 +618,8 @@ class Keyword(object):
         line_block.append(self.format_key_line([mid, ro, e, pr, sigy, etan]))
         self.submit_block(line_block)
 
-    def mat24_bilinear_rate(self, mid, ro=9.20000E-10, e=1500.0, pr=0.3, sigy=20.,
-                            etan=1., fail=1.0, tdel=0.0, str_mod=[0.075, 0.2, 1e-3, 3e1], plot_curve=False):
+    def mat24_rate(self, mid, ro=9.20000E-10, e=1500.0, pr=0.3, sigy=20.,
+                            etan=1., fail=0.0, tdel=0.0, str_mod=[0.075, 0.2, 1e-3, 3e1], plot_curve=False, soften=False):
         tbid = 2000
         sigma_y = sigy / (1 + str_mod[0] * np.log10(str_mod[2]))
 
@@ -651,12 +650,16 @@ class Keyword(object):
                 failCurve = fail
             abscissa = np.linspace(0, failCurve + 1, 10)
             ordinate = yield_stress + etan * abscissa
-            self.define_curve(lcid=int(curve_id), abscissas=abscissa, ordinates=ordinate)
+            if soften  == True:
+                mat_dict=self.soften_yield_curve(youngs=e, sigy=yield_stress, etan=etan)
+                self.define_curve(lcid=int(curve_id), abscissas=mat_dict['strain'], ordinates=mat_dict['stress'])
+            else:
+                self.define_curve(lcid=int(curve_id), abscissas=abscissa, ordinates=ordinate)
 
         self.mat24_bilinear(mid, ro=ro, e=e, pr=pr, sigy=sigy,
                        etan=etan, fail=fail, tdel=tdel, lcss=tbid, C=0, p=0)
 
-    def soften_yield_curve(self, youngs=1500, sigy=20., etan=1., plot_curve=False):
+    def soften_yield_curve(self, youngs=1500.0, sigy=20., etan=1., plot_curve=False):
         yieldStrain = sigy / youngs
         E = youngs
         sigma = np.linspace(0, sigy * 1.5, 200)
@@ -678,7 +681,7 @@ class Keyword(object):
             # plt.plot(matDict['strain'], matDict['stress'])
 
         mat_dict = {}
-        mat_dict['E'] = E
+        mat_dict['e'] = E
         mat_dict['stress'] = np.interp(np.linspace(eps[(sigma > sigy / 2).argmax()], 10, 300), epsPl, sigma)
         mat_dict['strain'] = np.linspace(0, 10 - eps[(sigma > sigy / 2).argmax()], 300)
         return mat_dict
@@ -893,46 +896,7 @@ class Keyword(object):
 
     ###########################################
     # Curves
-    ################################################
-    def loadCurveDispToVel(self, saturationAmpl, saturationTime, endTime, startTime=0.0, steps=1000, shape='trap'):
-        loadCurveDict = {}
-        loadCurveDict['time'] = np.append(np.linspace(startTime, saturationTime, steps), [endTime + 1])
-        if startTime != 0.0:
-            loadCurveDict['time'] = np.insert(loadCurveDict['time'], 0, [0.0])
-
-        startAmpl = 0.0
-        if saturationTime > endTime:
-            raise Exception('Saturation time is larger than endTime')
-
-        if shape == 'trap':
-            rampFraction = 0.1
-            displacement = saturationAmpl - startAmpl
-            dispTime = saturationTime - startTime
-            velAmpl = displacement / (dispTime * (1 - rampFraction))
-            loadCurveDict['time'] = np.append(
-                [startTime, startTime + rampFraction * dispTime, saturationTime - rampFraction * dispTime,
-                 saturationTime], [endTime + 1])
-            if startTime != 0.0:
-                loadCurveDict['time'] = np.insert(loadCurveDict['time'], 0, [0.0])
-
-            def trapFunction(time):
-                if time <= startTime:
-                    return startAmpl
-                elif time <= startTime + rampFraction * dispTime:
-                    return ((velAmpl - startAmpl) / (rampFraction * dispTime)) * (time - startTime)
-                elif time <= saturationTime - rampFraction * dispTime:
-                    return velAmpl - startAmpl
-                elif time <= saturationTime:
-                    amplVal = (velAmpl - startAmpl) - ((velAmpl - startAmpl) / (rampFraction * dispTime)) * (
-                                time - (saturationTime - (rampFraction * dispTime)))
-                    return amplVal
-                elif time >= saturationTime:
-                    return startAmpl
-
-            loadCurveDict['velAmpl'] = np.array([trapFunction(time) for time in loadCurveDict['time']])
-            loadCurveDict['disp'] = np.append([0], cumtrapz(loadCurveDict['velAmpl'], loadCurveDict['time']))
-        return loadCurveDict
-
+    ###############################################
     def loadCurveDispToVelMultiple(self, saturationAmpl, endTime):
         startTime = 0.0
         rampFraction = 0.1
@@ -1033,13 +997,13 @@ class Keyword(object):
                 line_block.append(self.format_key_line_short([nid, direction, float(coef)]))
         self.submit_block(line_block)
 
-    def constrained_linear_local(self, lcid, nid_list, coef_list, direction, cid=0):
+    def constrained_linear_local(self, lcid, nid_list, coeff_list, direction, cid=0):
         line_block = ['*CONSTRAINED_LINEAR_LOCAL\n']
         line_block.append('$#              lcid\n')
         line_block.append(self.format_key_line([lcid]))
         line_block.append('$#               nid                 dir                 cid                coef\n')
-        for nid, coef in zip(nid_list, coef_list):
-            line_block.append(self.format_key_line([nid, direction, cid, float(coef)]))
+        for nid, coeff in zip(nid_list, coeff_list):
+            line_block.append(self.format_key_line([nid, direction, cid, float(coeff)]))
         self.submit_block(line_block)
 
     def constrained_linear_global(self, lcid, nid_list, coef_list, direction):
@@ -1736,7 +1700,7 @@ class BoundaryConditions(): #
         return self.keyword
 
     def def_grad_prescription(self, def_gradient, corner_nodes, disp_node_set = None):
-        disp_type = self.disp_type
+        disp_type = self.keyword.disp_type
         for i, node in enumerate(corner_nodes):
             coords = self.mesh_geometry.nodes[node].coord
             if disp_node_set != None:
@@ -1744,7 +1708,7 @@ class BoundaryConditions(): #
             if len(def_gradient.shape) == 2:
                 u_gradient = def_gradient - np.identity(3)
                 u_disp = u_gradient.dot(coords)
-                time_inc = self.keyword.endtim / len(du_disp)
+                time_inc = self.keyword.endtim / len(u_disp)
                 for j, node_disp in enumerate(u_disp):
                     # (self, lcid, dist, tstart, tend, triseFrac=0.1, v0=0.0)
                     if disp_type == 'disp':
@@ -1856,7 +1820,7 @@ class BoundaryConditions(): #
 
     def periodic_linear_local(self, def_gradient):
         constrained_id_counter=9000001
-        ref_elements = list(self.mesh_geometry.solids.values())
+        ref_elements = list(self.mesh_geometry.solid_elements.values())
         ref_nodes = [ref_elem.node_ids[0] for ref_elem in ref_elements]
         self.keyword.boundary_spc_node(bspcid=9999, nid=ref_nodes[0], dofx=1, dofy=1, dofz=1)
         corner_ref_nodes = ref_nodes[1:]
@@ -1879,20 +1843,20 @@ class BoundaryConditions(): #
             for coeffs in coeff_list: #coeffs = coeff_list[0]
                 temp_nids, temp_coeffs = self.match_nid_coef(nid_list, coeffs, ref_node=ref_nodes[0])
                 for direction in range(0, 3):
-                    self.keyword.constrained_linear_local(lcid=constrained_id_counter, nidList=temp_nids,
-                                                        coefList=temp_coeffs, direction=direction + 1)
+                    self.keyword.constrained_linear_local(lcid=constrained_id_counter, nid_list=temp_nids,
+                                                        coeff_list=temp_coeffs, direction=direction + 1)
                     constrained_id_counter += 1
 
         #####################################################################
         #Element displacemente
         #####################################################################
         self.def_grad_prescription(def_gradient, corner_ref_nodes)
-        self.keyword.databaseHISTNODE(nid=[node.n for node in corner_ref_nodes]+[origo_ref_nodes[0].n])
+        self.keyword.database_hist_node(nids=ref_nodes)
         return self.keyword
 
     def periodic_multiple_global(self, def_gradient):
         constrained_id_counter = 9000001
-        ref_elements = list(self.mesh_geometry.solids.values())
+        ref_elements = list(self.mesh_geometry.solid_elements.values())
         ref_nodes = [ref_elem.node_ids[0] for ref_elem in ref_elements]
         corner_ref_nodes = ref_nodes[1:]
         origo_ref_nodes = [ref_nodes[0]] * 3
@@ -1945,5 +1909,5 @@ class BoundaryConditions(): #
         self.def_grad_prescription(self, def_gradient, corner_nodes)
         self.keyword.database_hist_node(nids=corner_nodes)
         return self.keyword
-keyword = Keyword(r'H:\thesis\periodic\representative\S05R1\ID1\testKey.key')
-self = BoundaryConditions(keyword, mesh_geometry)
+#keyword = Keyword(r'H:\thesis\periodic\representative\S05R1\ID1\testKey.key')
+#self = BoundaryConditions(keyword, mesh_geometry)
