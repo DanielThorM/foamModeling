@@ -7,7 +7,7 @@ import numpy as np
 import os
 import subprocess
 #def_gradient = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 0.2]])
-def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=0.0, material_data={}, **kwargs):
+def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi=0.0, material_data={}, **kwargs):
     options = {
         'elem_type': 16,
         'strain_rate':  1.0,
@@ -16,7 +16,8 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
         'n_steps_coeff':500,
         'pert_nodes': 0.0,
         'pert_shell': 0.0,
-        'shell_thickness_sigma':0.0,
+        'tt_sigma':0.0,
+        'csa': 0.0,
         'run': False,
         'return_copy': False,
         'sim_type':'implicit',
@@ -52,11 +53,11 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
     keyword.control_structured()
     endtim = options['strain_coeff']*options['size_coeff'] / options['strain_rate']
     keyword.control_termination(endtim=endtim)
+    sampling_number = (options['n_steps_coeff'] * options['size_coeff'] * options['strain_coeff'])
     if options['sim_type'] == 'implicit':
-        sampling_number = (options['n_steps_coeff']*options['size_coeff']*options['strain_coeff'])
         keyword.control_implicit_general(imflag=1,
                                          dt0=endtim/sampling_number)
-        keyword.control_implicit_auto(dtmin=endtim/(sampling_number*10), dtmax=endtim*2/sampling_number, iteopt=25)
+        keyword.control_implicit_auto(dtmin=endtim/(sampling_number*100), dtmax=endtim*2/sampling_number, iteopt=25)
         keyword.control_contact(shlthk=2)
         iacc=1
         if options['elem_type']==2:
@@ -112,10 +113,10 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
 
     keyword.mat_null(mid=2, e = material['e'])
     #keyword.mat24(mid=2, e=material['e']/2, sigy=0.0001, fail=material['matfail'], etan=0.00001)
-    if options['beam_cs_shape'] == 'tri':
-        keyword.mat28(mid=4, e=material['e'], sigy=material['sigy'], etan=material['etan'], pr=material['pr'],
-                      ro=material['ro'])
 
+
+    mesh_geometry.set_csa_sigma(options['csa_sigma'])
+    mesh_geometry.set_tt_sigma(options['tt_sigma'])
     mesh_geometry.set_rho(rho=rho, phi=phi)
 
     if phi != 1.0: # If not only beams
@@ -135,6 +136,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
                                      fs=material['fs'], fd=material['fd'], dc=material['dc'])
 
     if phi !=0.0:
+        mesh_geometry.set_beam_shape(options['beam_shape'])
         if options['beam_cs_shape'] == 'tri':
             keyword.mat28(mid=4, e=material['e'], sigy=material['sigy'], etan=material['etan'], pr=material['pr'],
                           ro=material['ro'])
@@ -149,7 +151,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
                                      fs=material['fs'], fd=material['fd'], dc=material['dc'])
 
         elif options['beam_cs_shape'] == 'round':
-            keyword.element_beam_orientation(mesh_geometry.beam_elements)
+            keyword.element_beam_thickness_orientation(mesh_geometry.beam_elements)
             beam_elform = 1
             for beam in mesh_geometry.beams.values():
                 mid=1
@@ -160,20 +162,23 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
                                      fs=material['fs'], fd=material['fd'], dc=material['dc'])
 
 
-    for i, volume in enumerate(
-            mesh_geometry.tessellation.polyhedrons.values()):  # volume = list(mesh_geometry.tessObject.polyhedrons.values())[0]
-        keyword.set_part_list(sid=5000001 + i,
-                              pid_list=[abs(surface) * 10 + mesh_geometry.surf_num_offset for surface in volume.faces])
-    number_of_polyhedons = i
-    for i in range(number_of_polyhedons):
-        if options['sim_type'] == 'implicit':
-            keyword.contact_automatic_single_surface_mortar_id(cid=5200001+i, ssid=5000001+i, sstyp=2, ignore=1)
-        elif options['sim_type'] == 'explicit':
-            keyword.contact_automatic_single_surface_id(cid=5200001+i, ssid=5000001+i, sstyp=2,
-                                                     ignore=1, igap=2, snlog=1)
+    if options['sim_type'] == 'implicit':
+        #keyword.contact_automatic_single_surface_mortar_id(cid=5200001+i, ssid=5000001+i, sstyp=2, ignore=1)
+        keyword.contact_automatic_single_surface_mortar_id(cid=5200001, ssid=0, sstyp=2, ignore=1)
+    elif options['sim_type'] == 'explicit':
+        keyword.set_part_list(sid=99,
+                              pid_list=[solid.id_ for solid in mesh_geometry.solids.values()])
+        keyword.contact_automatic_single_surface_id(cid=5200001, ssid=99, sstyp=6,
+                                                 ignore=1, igap=2, snlog=1)
 
     if options['airbag'] == True:
+        for i, volume in enumerate(
+                mesh_geometry.tessellation.polyhedrons.values()):  # volume = list(mesh_geometry.tessObject.polyhedrons.values())[0]
+            keyword.set_part_list(sid=5000001 + i,
+                                  pid_list=[abs(surface) * 10 + mesh_geometry.surf_num_offset for surface in
+                                            volume.faces])
         keyword.database_abstat(dt=keyword.endtim / sampling_number)
+        number_of_polyhedons = i
         for i in range(number_of_polyhedons):
             keyword.airbag_adiabatic_gas_model(abid=5100001 + i, sid=5000001 + i)
     ##########################################################################
@@ -212,7 +217,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
     elif options['sim_type'] == 'explicit':
         keyword = BCs.periodic_multiple_global(def_gradient)
         keyword.end_key()
-        keyword.write_to_key()
+        keyword.write_key()
 ##########################################################################
 
 ##########################################################################
@@ -228,5 +233,4 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
         os.chdir(rem_working_folder)
     #return readASCI.readrwforc(workingFolder=workingFolder)
 
-os.chdir(r'H:\thesis\periodic\representative\S05R1\ID1')
-periodic_template(tessellation, 'testKey.key', def_gradient, phi = 0.0, strain_coeff=0.8, size_coeff=0.5)
+periodic_template(tessellation, 'testcsa_sigma.key', def_gradient, csa_sigma=0.1, tt_sigma=0.1)
