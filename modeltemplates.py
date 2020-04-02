@@ -6,7 +6,8 @@ imp.reload(kw)
 import numpy as np
 import os
 import subprocess
-def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=0, material_data={}, **kwargs):
+#def_gradient = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 0.2]])
+def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=0.0, material_data={}, **kwargs):
     options = {
         'elem_type': 16,
         'strain_rate':  1.0,
@@ -41,7 +42,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
         'mat_type':'mat24', #'mat181'
         'fs':0.76,
         'fd':0.76,
-        'dc':1.0
+        'dc':0.0
     }
     material.update(material_data)
 
@@ -49,7 +50,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
     keyword = kw.Keyword(model_file_name)# model_file_name = r'H:\thesis\periodic\representative\S05R1\ID1\testKey.key'
     keyword.comment_block('Control')
     keyword.control_structured()
-    endtim = options['strain_coeff'] / options['strain_rate']
+    endtim = options['strain_coeff']*options['size_coeff'] / options['strain_rate']
     keyword.control_termination(endtim=endtim)
     if options['sim_type'] == 'implicit':
         sampling_number = (options['n_steps_coeff']*options['size_coeff']*options['strain_coeff'])
@@ -164,18 +165,17 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
         keyword.set_part_list(sid=5000001 + i,
                               pid_list=[abs(surface) * 10 + mesh_geometry.surf_num_offset for surface in volume.faces])
     number_of_polyhedons = i
+    for i in range(number_of_polyhedons):
+        if options['sim_type'] == 'implicit':
+            keyword.contact_automatic_single_surface_mortar_id(cid=5200001+i, ssid=5000001+i, sstyp=2, ignore=1)
+        elif options['sim_type'] == 'explicit':
+            keyword.contact_automatic_single_surface_id(cid=5200001+i, ssid=5000001+i, sstyp=2,
+                                                     ignore=1, igap=2, snlog=1)
 
     if options['airbag'] == True:
         keyword.database_abstat(dt=keyword.endtim / sampling_number)
         for i in range(number_of_polyhedons):
             keyword.airbag_adiabatic_gas_model(abid=5100001 + i, sid=5000001 + i)
-
-    for i in range(number_of_polyhedons):
-        if options['sim_type'] == 'implicit':
-            keyword.contact_automatic_single_surface_mortar_id(cid=5200001+i, ssid=5000001+i, sstyp=2, fs=-1, fd=-1., vdc=20)
-        elif options['sim_type'] == 'explicit':
-            keyword.contact_automatic_single_surface_id(cid=5200001+i, ssid=5000001+i, sstyp=2, fs=-1, fd=-1., dc=0.0,
-                                                    soft=0, ignore=1, igap=2, snlog=1)
     ##########################################################################
     if options['pert_nodes'] != 0.0:
         keyword.pertubation_node(options['pert_nodes'], nsid=0, cmp=1, xwl=mesh_geometry.tessellation.domain_size[0]/10,
@@ -185,10 +185,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
                                  ywl=0, zwl=0)
     ##########################################################################
 
-    #if returnCopy==True:
-    ##    keyword.writeNodes(mesh_geometry.nodeDict)
-     #   return BCs, mesh_geometry, sidePlateElements, rotDof, phi
-    #else:
+
 
     #def_gradient = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 0.2]])
     keyword.node(mesh_geometry.nodes)
@@ -204,6 +201,10 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
         for solid in mesh_geometry.solids.values():
             keyword.part(pid=solid.id_, secid=3, mid=3)
 
+    if options['return_copy']==True:
+       return BCs
+
+
     if options['sim_type'] == 'implicit':
         keyword = BCs.periodic_linear_local(def_gradient)
         keyword.end_key()
@@ -216,7 +217,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
 
 ##########################################################################
     ##########################################################################
-    if options['run'] == True:
+    if options['run'] == True: #Move to keyword_file?
         rem_working_folder = os.getcwd()
         os.chdir(keyword.model_file_name.rsplit('\\',1)[0])
         SOLVER = r'C:\Program Files\LSTC\LS-DYNA\ls-dyna_smp_d_R10.0_winx64_ifort160.exe'
@@ -227,4 +228,5 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.1, phi=
         os.chdir(rem_working_folder)
     #return readASCI.readrwforc(workingFolder=workingFolder)
 
-
+os.chdir(r'H:\thesis\periodic\representative\S05R1\ID1')
+periodic_template(tessellation, 'testKey.key', def_gradient, phi = 0.0, strain_coeff=0.8, size_coeff=0.5)
