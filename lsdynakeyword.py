@@ -53,6 +53,18 @@ class Keyword(object):
             line_block.append(self.format_key_line([*list(elem.orientation)]))
         self.submit_block(line_block)
 
+    def element_beam_thickness_orientation(self, elements):
+        line_block = ['*ELEMENT_BEAM_THICKNESS_ORIENTATION\n']
+        line_block.append(
+            '$#               nid                 pid                  n1                  n2                  n3                  n4                  n5                  n6\n')
+        for elem in elements.values():
+            ts1 = np.sqrt(elem.csa * 4 / np.pi)
+            tt1 = 0
+            line_block.append(self.format_key_line([elem.id_, elem.parent, *elem.node_ids]))
+            line_block.append(self.format_key_line([ts1, ts1, tt1, tt1,]))
+            line_block.append(self.format_key_line([*list(elem.orientation)]))
+        self.submit_block(line_block)
+
     def element_beam_section07_orientation(self, elements):
         line_block = ['*ELEMENT_BEAM_SECTION_ORIENTATION\n']
         line_block.append(
@@ -288,7 +300,7 @@ class Keyword(object):
         line_block.append(self.format_key_line([0.0, 0, 0, '', '', 0.0]))
         self.submit_block(line_block)
 
-    def control_contact(self, shlthk=1):
+    def control_contact(self, shlthk=2):
         slsfac = 0.1
         rwpnal = 0.0
         islchk = 1
@@ -993,8 +1005,8 @@ class Keyword(object):
             # line_block.append('$#               nmp\n')
             line_block.append(self.format_key_line_short([const_dict['nmp']]))
             # line_block.append('$#     nid       dir      coef\n')
-            for nid, coef in zip(const_dict['nid_list'], const_dict['coef_list']):
-                line_block.append(self.format_key_line_short([nid, direction, float(coef)]))
+            for nid, coeff in zip(const_dict['nid_list'], const_dict['coeff_list']):
+                line_block.append(self.format_key_line_short([nid, direction, float(coeff)]))
         self.submit_block(line_block)
 
     def constrained_linear_local(self, lcid, nid_list, coeff_list, direction, cid=0):
@@ -1076,8 +1088,8 @@ class Keyword(object):
         line_block.append(self.format_key_line([nid, cid, dofx, dofy, dofz, dofrx, dofry, dofrz]))
         self.submit_block(line_block)
 
-    def prescribeBoundaryMotionSet(self, bmsid, nsid, dof, vad, lcid, sf=1.0, death=1.0E28, birth=0.0, offset1=0.0,
-                                   offset2=0.0):
+    def boundary_prescribed_motion_set(self, bmsid, nsid, dof, vad, lcid, sf=1.0, death=1.0E28, birth=0.0, offset1=0.0,
+                                       offset2=0.0):
         # dof: x, y, x= 1, 2, 3
         vid = 0
         mrb = 0
@@ -1097,8 +1109,8 @@ class Keyword(object):
 
         self.submit_block(line_block)
 
-    def prescribe_boundary_motion_node(self, bmsid, nid, dof, vad, lcid, sf=1.0, death=1.0E28, birth=0.0, offset1=0.0,
-                                       offset2=0.0):
+    def boundary_prescribed_motion_node(self, bmsid, nid, dof, vad, lcid, sf=1.0, death=1.0E28, birth=0.0, offset1=0.0,
+                                        offset2=0.0):
         # dof: x, y, x= 1, 2, 3
         vid = 0
         mrb = 0
@@ -1721,16 +1733,16 @@ class BoundaryConditions(): #
                                                          tend=self.keyword.endtim, trise_frac=0.1)
 
                     if disp_node_set != None:
-                        self.keyword.prescribe_boundary_motion_set(bmsid=10 * (i + 1) + (j + 1), nsid=10 + 10 * i,
+                        self.keyword.boundary_prescribed_motion_set(bmsid=10 * (i + 1) + (j + 1), nsid=10 + 10 * i,
                                                                 dof=(j + 1),
                                                                 vad=vad, lcid=10 * (i + 1) + (j + 1), #if implicit: vad = 2, else vad = 0
                                                                 sf=np.sign(node_disp),
                                                                 birth=0.0, death=self.keyword.endtim)
                     else:
-                        self.keyword.prescribe_boundary_motion_node(bmsid=10 * (i + 1) + (j + 1), nid=node, dof=(j + 1),
-                                                                    vad=vad, lcid=10 * (i + 1) + (j + 1),
-                                                                    sf=np.sign(node_disp),
-                                                                    birth=0.0, death=self.keyword.endtim)
+                        self.keyword.boundary_prescribed_motion_node(bmsid=10 * (i + 1) + (j + 1), nid=node, dof=(j + 1),
+                                                                     vad=vad, lcid=10 * (i + 1) + (j + 1),
+                                                                     sf=np.sign(node_disp),
+                                                                     birth=0.0, death=self.keyword.endtim)
 
 
 
@@ -1756,14 +1768,14 @@ class BoundaryConditions(): #
                                                              tend=time_inc, trise_frac=0.1)
 
                         if disp_node_set != None:
-                            self.keyword.prescribe_boundary_motion_node(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
-                                                                        nid=node, dof=(j + 1),
-                                                                        vad=vad,
-                                                                        lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
-                                                                        sf=np.sign(node_disp), birth=k * time_inc,
-                                                                        death=(k + 1) * time_inc)
+                            self.keyword.boundary_prescribed_motion_node(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                         nid=node, dof=(j + 1),
+                                                                         vad=vad,
+                                                                         lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                         sf=np.sign(node_disp), birth=k * time_inc,
+                                                                         death=(k + 1) * time_inc)
                         else:
-                            self.keyword.prescribe_boundary_motion_set(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                            self.keyword.boundary_prescribed_motion_set(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
                                                                     nsid=10 + 10 * i, dof=(j + 1),
                                                                     vad=vad, lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
                                                                     sf=np.sign(node_disp), birth=k * time_inc,
@@ -1886,7 +1898,7 @@ class BoundaryConditions(): #
                     global_constr_list[direction].append(temp_global_dict)
 
         for direction in range(0, 3):
-            self.keyword.constrainedMultipleGlobal(id=constrained_id_counter, constr_list=global_constr_list[direction],
+            self.keyword.constrained_multiple_global(id=constrained_id_counter, constr_list=global_constr_list[direction],
                                                    direction=direction + 1)
             constrained_id_counter += 1
 
@@ -1896,10 +1908,10 @@ class BoundaryConditions(): #
         self.def_grad_prescription(def_gradient, [ref_elem.node_ids[0] for ref_elem in ref_elements],
                                    disp_node_set=[ref_elem.node_ids[1:] for ref_elem in ref_elements])
         self.keyword.database_hist_node(nids=ref_nodes)
-        self.keyword.set_node_list(nsid=888888 - 1, node_list=ref_elements[0].node_ids[1:])
+        self.keyword.set_node_list(nsid=888888 - 1, node_list=[ref_elements[0].node_ids[0]])
         self.keyword.database_nodfor_group(nsid=888888 - 1)
         for i in range(3):
-            self.keyword.set_node_list(nsid=888888 + i, node_list=ref_elements[i+1].node_ids[1:])
+            self.keyword.set_node_list(nsid=888888 + i, node_list=[ref_elements[i+1].node_ids[0]])
             self.keyword.database_nodfor_group(nsid=888888 + i)
 
         return self.keyword
