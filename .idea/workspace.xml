@@ -3,6 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="b5932416-d4b6-48b7-ba19-2e34e2fad928" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/lsdynakeyword.py" beforeDir="false" afterPath="$PROJECT_DIR$/lsdynakeyword.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/meshmodel.py" beforeDir="false" afterPath="$PROJECT_DIR$/meshmodel.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/modeltemplates.py" beforeDir="false" afterPath="$PROJECT_DIR$/modeltemplates.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tessellations.py" beforeDir="false" afterPath="$PROJECT_DIR$/tessellations.py" afterDir="false" />
     </list>
@@ -36,39 +37,40 @@
       <file leaf-file-name="meshmodel.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/meshmodel.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="5185">
-              <caret line="835" column="66" lean-forward="true" selection-start-line="835" selection-start-column="66" selection-end-line="835" selection-end-column="66" />
+            <state relative-caret-position="17">
+              <caret line="549" column="39" selection-start-line="549" selection-start-column="39" selection-end-line="549" selection-end-column="39" />
               <folding>
                 <element signature="e#0#26#0" expanded="true" />
                 <element signature="e#952#2061#0" />
                 <element signature="e#2099#3653#0" />
                 <element signature="e#3692#3853#0" />
-                <element signature="e#3888#5039#0" />
-                <element signature="e#5074#8353#0" />
+                <element signature="e#8389#8627#0" />
                 <element signature="e#9741#12706#0" />
                 <element signature="e#12742#13054#0" />
+                <element signature="e#32034#35053#0" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="modeltemplates.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="modeltemplates.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/modeltemplates.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="170">
-              <caret line="191" column="55" lean-forward="true" selection-start-line="48" selection-start-column="4" selection-end-line="191" selection-end-column="55" />
+            <state relative-caret-position="51">
+              <caret line="3" column="14" lean-forward="true" selection-start-line="3" selection-start-column="14" selection-end-line="3" selection-end-column="14" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
+                <element signature="e#239#11191#0" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="lsdynakeyword.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="lsdynakeyword.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/lsdynakeyword.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="212">
-              <caret line="1710" column="46" lean-forward="true" selection-start-line="1710" selection-start-column="46" selection-end-line="1710" selection-end-column="46" />
+            <state relative-caret-position="1530">
+              <caret line="1918" column="43" lean-forward="true" selection-start-line="1918" selection-start-column="43" selection-end-line="1918" selection-end-column="43" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
                 <element signature="e#96765#101194#0" />
@@ -88,22 +90,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>master_to.ex</find>
-      <find>constrained_lin</find>
-      <find>define_curve</find>
-      <find>constr_list</find>
-      <find>constrList</find>
-      <find>database_hist_node</find>
-      <find>constrained</find>
-      <find>solid_num_offset</find>
-      <find>meshGeometry</find>
-      <find>self.part_tup</find>
-      <find>mat2</find>
-      <find>GLS</find>
-      <find>soften</find>
-      <find>mat24</find>
-      <find>element_b</find>
-      <find>beam</find>
       <find>section_b</find>
       <find>5000001 + i</find>
       <find>nodes</find>
@@ -115,9 +101,25 @@
       <find>constrained_linear_local</find>
       <find>write</find>
       <find>def wri</find>
-      <find>Solid</find>
       <find>contact_automatic_single_surface_mortar_id</find>
+      <find>constrainedMi</find>
+      <find>prescribe_boundary_motion_set</find>
+      <find>prescribe_boundary_motion</find>
       <find>5000001+i</find>
+      <find>beam</find>
+      <find>section</find>
+      <find>control_acc</find>
+      <find>Solid</find>
+      <find>find_so</find>
+      <find>find_corner_n</find>
+      <find>self.compare</find>
+      <find>def compare_ar</find>
+      <find>def find_</find>
+      <find>set_volume</find>
+      <find>surface_area()</find>
+      <find>element_beam_section07_orientation</find>
+      <find>surface_area</find>
+      <find>multipl</find>
     </findStrings>
     <replaceStrings>
       <replace>.vertices</replace>
@@ -130,6 +132,7 @@
       <replace>.id_</replace>
       <replace>corner_nodes</replace>
       <replace>self.mesh_geometry</replace>
+      <replace>last_shell</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -142,9 +145,9 @@
         <option value="$PROJECT_DIR$/tesselations.py" />
         <option value="$PROJECT_DIR$/tessellations.py" />
         <option value="$PROJECT_DIR$/keyword.py" />
-        <option value="$PROJECT_DIR$/meshmodel.py" />
-        <option value="$PROJECT_DIR$/modeltemplates.py" />
         <option value="$PROJECT_DIR$/lsdynakeyword.py" />
+        <option value="$PROJECT_DIR$/modeltemplates.py" />
+        <option value="$PROJECT_DIR$/meshmodel.py" />
       </list>
     </option>
   </component>
@@ -228,6 +231,7 @@
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.20042644" />
       <window_info anchor="bottom" id="Docker" order="7" show_stripe_button="false" />
       <window_info anchor="right" id="Database" order="3" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.32897604" />
       <window_info anchor="right" auto_hide="true" x="650" y="176" width="619" height="687" id="SciView" order="3" show_stripe_button="false" type="FLOATING" weight="0.32995737" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
@@ -238,7 +242,6 @@
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
-      <window_info anchor="bottom" id="Find" order="1" weight="0.32897604" />
     </layout>
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -255,7 +258,7 @@
           <line>1150</line>
         </line-breakpoint>
       </breakpoints>
-      <option name="time" value="26" />
+      <option name="time" value="27" />
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
@@ -284,10 +287,10 @@
             <element signature="e#952#2061#0" />
             <element signature="e#2099#3653#0" />
             <element signature="e#3692#3853#0" />
-            <element signature="e#3888#5039#0" />
-            <element signature="e#5074#8353#0" />
+            <element signature="e#8389#8627#0" />
             <element signature="e#9741#12706#0" />
             <element signature="e#12742#13054#0" />
+            <element signature="e#32034#35053#0" />
           </folding>
         </state>
       </provider>
@@ -309,31 +312,15 @@
           <caret line="14" column="24" lean-forward="true" selection-start-line="14" selection-start-column="24" selection-end-line="14" selection-end-column="24" />
           <folding>
             <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#239#11191#0" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python37/Lib/site-packages/IPython/core/interactiveshell.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="781">
+        <state relative-caret-position="628">
           <caret line="3325" selection-start-line="3325" selection-end-line="3325" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/meshmodel.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="5185">
-          <caret line="835" column="66" lean-forward="true" selection-start-line="835" selection-start-column="66" selection-end-line="835" selection-end-column="66" />
-          <folding>
-            <element signature="e#0#26#0" expanded="true" />
-            <element signature="e#952#2061#0" />
-            <element signature="e#2099#3653#0" />
-            <element signature="e#3692#3853#0" />
-            <element signature="e#3888#5039#0" />
-            <element signature="e#5074#8353#0" />
-            <element signature="e#9741#12706#0" />
-            <element signature="e#12742#13054#0" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -353,23 +340,41 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/modeltemplates.py">
+    <entry file="file://$PROJECT_DIR$/meshmodel.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="170">
-          <caret line="191" column="55" lean-forward="true" selection-start-line="48" selection-start-column="4" selection-end-line="191" selection-end-column="55" />
+        <state relative-caret-position="17">
+          <caret line="549" column="39" selection-start-line="549" selection-start-column="39" selection-end-line="549" selection-end-column="39" />
           <folding>
-            <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#0#26#0" expanded="true" />
+            <element signature="e#952#2061#0" />
+            <element signature="e#2099#3653#0" />
+            <element signature="e#3692#3853#0" />
+            <element signature="e#8389#8627#0" />
+            <element signature="e#9741#12706#0" />
+            <element signature="e#12742#13054#0" />
+            <element signature="e#32034#35053#0" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/lsdynakeyword.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="212">
-          <caret line="1710" column="46" lean-forward="true" selection-start-line="1710" selection-start-column="46" selection-end-line="1710" selection-end-column="46" />
+        <state relative-caret-position="1530">
+          <caret line="1918" column="43" lean-forward="true" selection-start-line="1918" selection-start-column="43" selection-end-line="1918" selection-end-column="43" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
             <element signature="e#96765#101194#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/modeltemplates.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="51">
+          <caret line="3" column="14" lean-forward="true" selection-start-line="3" selection-start-column="14" selection-end-line="3" selection-end-column="14" />
+          <folding>
+            <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#239#11191#0" />
           </folding>
         </state>
       </provider>

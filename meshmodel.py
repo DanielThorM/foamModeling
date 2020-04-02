@@ -115,6 +115,7 @@ class SurfPartClass(object):
         self.id_ = id_
         self.elem_ids = elem_ids
         self.tt = None
+        self.tt_scale = 1.0
         self.area = self.find_area()
         self.slave = False
     def find_area(self):
@@ -150,6 +151,7 @@ class BeamPartClass(object):
         self.id_ = id_
         self.elem_ids = elem_ids
         self.csa = None
+        self.csa_scale = 1.0
         self.slave = False
         self.length = self.find_length()
 
@@ -243,6 +245,8 @@ class FoamModel(object):
         self.last_node_key = max(self.nodes.keys())
         self.rho = None
         self.phi = None
+        self.tt_sigma = None
+        self.csa_sigma = None
         self.surfs = self.find_surfs()
         self.nodes_on_edges = self.find_nodes_on_edges()
         self.beam_elements = self.find_beam_elements()
@@ -490,11 +494,17 @@ class FoamModel(object):
                 part_dict[part].slave = True
         return part_dict
 
-    def surface_area(self):
-        return sum([part.area for part in self.surfs.values() if part.slave == False])
+    def surface_area(self, scaled = False):
+        if scaled == True:
+            return sum([part.area*part.tt_scale for part in self.surfs.values() if part.slave == False])
+        else:
+            return sum([part.area for part in self.surfs.values() if part.slave == False])
 
-    def beam_length(self):
-        return sum([part.length for part in self.beams.values() if part.slave == False])
+    def beam_length(self, scaled = False):
+        if scaled == True:
+            return sum([part.length*part.csa_scale for part in self.beams.values() if part.slave == False])
+        else:
+            return sum([part.length for part in self.beams.values() if part.slave == False])
 
     def surface_volume(self):
         return sum([part.find_volume() for part in self.surfs.values() if part.slave == False])
@@ -507,17 +517,17 @@ class FoamModel(object):
         total_volume = np.prod(self.tessellation.domain_size)
         return bulk_volume/total_volume
 
-    def set_phi(self, phi=None, rho=None):
+    def set_rho(self, phi=None, rho=None):
         if self.rho ==  None and rho == None:
             raise Exception('Relative density not defined')
-        elif rho != None:
+        if rho != None:
             self.rho = rho
         if self.phi == None and phi == None:
             raise Exception('Phi not defined')
-        elif phi != None:
+        if phi != None:
             self.phi = phi
-        surface_area = self.surface_area()
-        beam_length = self.beam_length()
+        surface_area = self.surface_area(scaled=True)
+        beam_length = self.beam_length(scaled=True)
         solid_volume = self.rho * np.prod(self.tessellation.domain_size)
         #(csa * beam_length + tt * surface_area) = solid_volume
         #(csa * beam_length/surface_area + tt) = solid_volume/surface_area
@@ -528,20 +538,34 @@ class FoamModel(object):
         csa = self.phi*solid_volume/beam_length
         tt = solid_volume/surface_area - csa * beam_length/surface_area
         for beam in self.beams.values():
-            beam.set_csa(csa)
+            beam.set_csa(csa*beam.csa_scale)
         for surf in self.surfs.values():
-            surf.tt = tt
+            surf.tt = tt*surf.tt_scale
 
-    def set_rho(self, rho=None, phi=None):
-        if self.rho ==  None and rho == None:
+    def set_tt_sigma(self, tt_sigma):
+        if self.tt_sigma ==  None and tt_sigma == None:
             raise Exception('Relative density not defined')
-        elif rho != None:
-            self.rho = rho
-        if self.phi == None and phi == None:
-            raise Exception('Phi not defined')
-        elif phi != None:
-            self.phi = phi
-        self.set_phi()
+        elif tt_sigma != None:
+            self.tt_sigma = tt_sigma
+        for surf in self.surfs.values():
+            surf.tt_scale = np.random.lognormal(0.0, tt_sigma)
+        try:
+            self.set_rho()
+        except:
+            pass
+
+    def set_csa_sigma(self, csa_sigma):
+        if self.csa_sigma ==  None and csa_sigma == None:
+            raise Exception('Relative density not defined')
+        elif csa_sigma != None:
+            self.csa_sigma = csa_sigma
+        for beams in self.beams.values():
+            beams.csascale = np.random.lognormal(0.0, csa_sigma)
+        try:
+            self.set_rho()
+        except:
+            pass
+
 
     def set_beam_shape(self, beam_shape):
         """'straight', 'marvi'"""
@@ -836,31 +860,161 @@ class FoamModel(object):
             for direction in set([0,1,2])-set([plane_map[plane]]):
                 self.nodes[node].coord[direction] += offset_direction[i][direction]*offset[direction]
 
-class SingleElement(object):
-    def __init__(self):
+class SolidModel(object):
+    def __init__(self, domain_size=np.array([1.0, 1.0, 1.0]), elem_size = 0.5):
         self.nodes={}
+        self.domain_size = domain_size
         self.solid_elements={}
-        self.create_element()
+        self.create_elements()
+        self.solids = self.find_solids()
+        self.corner_nodes = self.find_corner_nodes
 
-    def create_element(self, ref_element_size = 1.0):
-        last_node_key = 1
+    def create_elements(self, elem_size = 1.0):
         elem_counter = 1
         part_num = 1
-        node_list = []
-        ref_loc = np.array([0,0,0])
-        element_offset = np.array(
-            [[0, 0, 0], [ref_element_size, 0, 0], [ref_element_size, ref_element_size, 0], [0, ref_element_size, 0],
-             [0, 0, ref_element_size], [ref_element_size, 0, ref_element_size],
-             [ref_element_size, ref_element_size, ref_element_size], [0, ref_element_size, ref_element_size]])
-        for offset in element_offset:
-            last_node_key += 1
-            self.nodes[last_node_key] = NodeClass(last_node_key, ref_loc + offset)
-            node_list.append(last_node_key)
-        self.corner_nodes = node_list
-        self.solid_elements[elem_counter] = SolidElementClass(self.nodes, elem_counter, part_num, node_list)
-        self.solids = SolidPartClass(self.solid_elements, part_num, [element.id_ for element in self.solid_elements.values() if element.parent == part_num])
+        ne_sides = list(map(int, self.domain_size/ elem_size))
+        side_coord_array = [np.linspace(0, dim, n_dim + 1) for dim, n_dim in zip(self.domain_size, ne_sides)]
+        xx, yy, zz = np.meshgrid(*side_coord_array)
+        id_list = list(range(1, len(xx.flatten())+1))
+        for x, y, z, id_ in zip(xx.flatten(), yy.flatten(), zz.flatten(), id_list):
+            self.nodes[id_] = NodeClass(id_, np.array([x,y,z]))
+
+        for i in range(ne_sides[0]):
+            for j in range(ne_sides[1]):
+                for k in range(ne_sides[2]):
+                    nid0 = k + (i) * (ne_sides[2] + 1) + (j) * (ne_sides[2] + 1) * (ne_sides[0] + 1) + 1
+                    nid1 = k + (i+1) * (ne_sides[2] + 1) + (j) * (ne_sides[2] + 1) * (ne_sides[0] + 1) + 1
+                    nid2 = k + (i+1) * (ne_sides[2] + 1) + (j+1) * (ne_sides[2] + 1) * (ne_sides[0] + 1) + 1
+                    nid3 = k + (i) * (ne_sides[2] + 1) + (j+1) * (ne_sides[2] + 1) * (ne_sides[0] + 1) + 1
+                    nid4 = k+1 + (i) * (ne_sides[2] + 1) + (j) * (ne_sides[2] + 1) * (ne_sides[0] + 1) + 1
+                    nid5 = k+1 + (i+1) * (ne_sides[2] + 1) + (j) * (ne_sides[2] + 1) * (ne_sides[0] + 1) + 1
+                    nid6 = k+1 + (i+1) * (ne_sides[2] + 1) + (j+1) * (ne_sides[2] + 1) * (ne_sides[0] + 1) + 1
+                    nid7 = k+1 + (i) * (ne_sides[2] + 1) + (j+1) * (ne_sides[2] + 1) * (ne_sides[0] + 1) + 1
+                    nid_list = [nid0, nid1, nid2, nid3, nid4, nid5, nid6, nid7]
+                    self.solid_elements[elem_counter] = SolidElementClass(self.nodes, elem_counter, part_num, nid_list)
+                    elem_counter += 1
+
+    def find_solids(self):
+        part_list = set([element.parent for element in self.solid_elements.values()])
+        part_dict = {}
+        for part in part_list:
+            part_dict[part] = SolidPartClass(self.solid_elements, part,
+                                             [element.id_ for element in self.solid_elements.values() if
+                                              element.parent == part])
+        return part_dict
+
+    def find_corner_nodes(self):
+        corner_nodes = [0] * 8
+        x_size, y_size, z_size = list(self.domain_size)
+        corner_locs = [[0.0,0.0,0.0],
+                       [x_size, 0.0, 0.0],
+                       [x_size, y_size, 0.0],
+                       [0.0, y_size, 0.0],
+                       [0.0, 0.0, z_size],
+                       [x_size, 0.0, z_size],
+                       [x_size, y_size, z_size],
+                       [0.0, y_size, z_size]]
+        for node in self.nodes.values(): #node= list(self.nodes.values())[0]
+            for i, corner_loc in enumerate(corner_locs):
+                if self.compare_arrays(node.coord,  corner_loc):
+                    corner_nodes[i] = node.id_
+        if 0 in corner_nodes:
+            raise Exception('Could not find all eight corner nodes')
+        return corner_nodes
+
+    def compare_arrays(self, arr0, arr1, rel_tol=1e-07, abs_tol=0.0):
+        return all([math.isclose(a, b, rel_tol=rel_tol, abs_tol=abs_tol) for a, b in zip(arr0, arr1)])
+
+    def create_side_elements(self, sides=['x', 'y', 'z'], overhang = 0.0 ):
+        new_coord_systems = []
+        part_id = 0
+        plane_map = {'x': 0, 'y': 1, 'z': 2}
+        self.shell_elements={}
+        self.plate_corner_nodes = []
+        for plane in sides:
+            offset_direction = [[-1, -1, -1],
+                                [1, -1, -1],
+                                [1, 1, -1],
+                                [-1, 1, -1],
+                                [-1, -1, 1],
+                                [1, -1, 1],
+                                [1, 1, 1],
+                                [-1, 1, 1]]
+            last_node = max(self.nodes.keys()) +1
+            for i, node in enumerate(self.corner_nodes):
+                for direction in set([0, 1, 2]) - set([plane_map[plane]]):
+                    self.nodes[last_node] = NodeClass(last_node,node.coord)
+                    self.nodes[last_node].coord[direction] += offset_direction[i][direction] * overhang
+                    self.plate_corner_nodes.append(last_node)
+                    last_node+=1
 
 
+
+        last_shell = 1
+        part_id += 10
+        node_ids = [self.plate_corner_nodes[0], self.plate_corner_nodes[3], self.plate_corner_nodes[7], self.plate_corner_nodes[4]]
+        new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+        if 'x' in [side.lower() for side in sides]:
+            self.shell_elements[last_shell] = ShellElementClass(
+                self.nodes, last_shell, part_id, node_ids
+            )
+
+        last_shell += 1
+        part_id += 10
+        node_ids = [self.plate_corner_nodes[1], self.plate_corner_nodes[5], self.plate_corner_nodes[6], self.plate_corner_nodes[2]]
+        new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+        if 'x' in [side.lower() for side in sides]:
+            self.shell_elements[last_shell] = ShellElementClass(
+                self.nodes, last_shell, part_id, node_ids
+            )
+
+
+
+        last_shell += 1
+        part_id += 10
+        node_ids = [self.plate_corner_nodes[0], self.plate_corner_nodes[4], self.plate_corner_nodes[5], self.plate_corner_nodes[1]]
+        new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+        if 'y' in [side.lower() for side in sides]:
+            self.shell_elements[last_shell] = ShellElementClass(
+                self.nodes, last_shell, part_id, node_ids
+            )
+
+        last_shell += 1
+        part_id += 10
+        node_ids = [self.plate_corner_nodes[2], self.plate_corner_nodes[6], self.plate_corner_nodes[7], self.plate_corner_nodes[3]]
+        new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+        if 'y' in [side.lower() for side in sides]:
+            self.shell_elements[last_shell] = ShellElementClass(
+                self.nodes, last_shell, part_id, node_ids
+            )
+
+        last_shell += 1
+        part_id += 10
+        node_ids = [self.plate_corner_nodes[0], self.plate_corner_nodes[1], self.plate_corner_nodes[2], self.plate_corner_nodes[3]]
+        new_coord_systems.append([node_ids[0], node_ids[1],node_ids[3]])
+        if 'z' in [side.lower() for side in sides]:
+            self.shell_elements[last_shell] = ShellElementClass(
+                self.nodes, last_shell, part_id, node_ids
+            )
+
+        last_shell += 1
+        part_id += 10
+        node_ids = [self.plate_corner_nodes[4], self.plate_corner_nodes[7], self.plate_corner_nodes[6], self.plate_corner_nodes[5]]
+        new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
+        if 'z' in [side.lower() for side in sides]:
+            self.shell_elements[last_shell] = ShellElementClass(
+                self.nodes, last_shell, part_id, node_ids
+            )
+        self.surfs = self.find_surfs()
+        self.coord_systems = new_coord_systems
+
+    def find_surfs(self):
+        part_list = set([element.parent for element in self.shell_elements.values()])
+        part_dict = {}
+        for part in part_list:
+            part_dict[part] = SurfPartClass(self.shell_elements, part, [element.id_ for element in self.shell_elements.values() if element.parent == part])
+        return part_dict
+#self = SolidModel(domain_size, elem_size=0.1)
 #mesh_geometry=FoamModel(tessellation=tessellation)
 #mesh_geometry.create_side_elements()
 #mesh_geometry.increase_side_plate_dim('z')
