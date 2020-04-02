@@ -222,6 +222,14 @@ class BeamPartClass(object):
                 return True
         return False
 
+class SolidPartClass(object):
+    def __init__(self, solid_elements, id_, elem_ids):
+        self.solid_elements = solid_elements
+        self.id_ = id_
+        self.elem_ids = elem_ids
+        self.slave = False
+
+
 class FoamModel(object):
     '''Takes inn a tessGeom object that must have been meshed and have an assigned meshFileName'''
     def __init__(self, tessellation, debug=False):
@@ -245,6 +253,7 @@ class FoamModel(object):
             self.find_edge_nodes_periodicity()
             self.transfer_surfaces()
             self.solid_elements = self.find_reference_elements()
+            self.solids = self.find_solids()
 
         if self.tessellation.periodic == False:
             self.delete_elements_on_sides(save_corner_beams=False, save_side_beams=False)
@@ -307,6 +316,13 @@ class FoamModel(object):
         part_dict = {}
         for part in part_list:
             part_dict[part] = SurfPartClass(self.shell_elements, part, [element.id_ for element in self.shell_elements.values() if element.parent == part])
+        return part_dict
+
+    def find_solids(self):
+        part_list = set([element.parent for element in self.solid_elements.values()])
+        part_dict = {}
+        for part in part_list:
+            part_dict[part] = SolidPartClass(self.solid_elements, part, [element.id_ for element in self.solid_elements.values() if element.parent == part])
         return part_dict
 
     def compare_arrays(self, arr0, arr1, rel_tol=1e-07, abs_tol=0.0):
@@ -844,7 +860,7 @@ class SolidElement(object):
 
 
 
-mesh_geometry=FoamModel(tessellation=tessellation)
+#mesh_geometry=FoamModel(tessellation=tessellation)
 #mesh_geometry.create_side_elements()
 #mesh_geometry.increase_side_plate_dim('z')
 #mesh_geometry.nodes[1].coord
