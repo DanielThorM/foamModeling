@@ -237,6 +237,8 @@ class FoamModel(object):
     def __init__(self, tessellation, debug=False):
         self.tessellation=tessellation
         #if self.tessellation.periodic == False: raise Exception('Invalid action for current tesselation')
+        self.beam_elements = {}
+        self.solid_elements = {}
         self.shell_elements = self.load_mesh()
         self.surf_num_offset = 2000000
         self.beam_num_offset = 4000000
@@ -633,7 +635,7 @@ class FoamModel(object):
         for node in self.nodes.values(): #node= list(self.nodes.values())[0]
             for i, corner_loc in enumerate(corner_locs):
                 if self.compare_arrays(node.coord,  corner_loc):
-                    corner_nodes[i] = node.id_
+                    corner_nodes[i] = node
         if 0 in corner_nodes:
             raise Exception('Could not find all eight corner nodes')
         return corner_nodes
@@ -681,15 +683,42 @@ class FoamModel(object):
 
         self.beams = self.find_beams()
 
-    def create_side_elements(self, sides=['x', 'y', 'z'], ):
+    def create_side_elements(self, sides=['x', 'y', 'z'], overhang=0.0):
         if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
         new_coord_systems = []
         part_id = int(max(self.surfs.keys()))
         self.corner_nodes = self.find_corner_nodes()
 
+        self.plate_corner_nodes = []
+        offset_direction = np.array([[-1, -1, -1],
+                            [1, -1, -1],
+                            [1, 1, -1],
+                            [-1, 1, -1],
+                            [-1, -1, 1],
+                            [1, -1, 1],
+                            [1, 1, 1],
+                            [-1, 1, 1]])
+        if overhang != 0.0 and len(sides)>1:
+            raise Exception('Can not make overhang for more than one plane')
+
+        if 'x' in sides and 'y' in sides and 'z' in sides:
+            overhang_map = np.array([0.0, 0.0, 0.0])
+        elif 'x' in sides:
+            overhang_map = np.array([0.0, 1.0, 1.0])
+        elif 'y' in sides:
+            overhang_map = np.array([1.0, 0.0, 1.0])
+        elif 'z' in sides:
+            overhang_map = np.array([1.0, 1.0, 0.0])
+        last_node = max(self.nodes.keys()) + 1
+        for i, node in enumerate(self.corner_nodes):
+            self.nodes[last_node] = NodeClass(last_node, node.coord)
+            self.nodes[last_node].coord += offset_direction[i] * overhang * overhang_map
+            self.plate_corner_nodes.append(self.nodes[last_node])
+            last_node += 1
+
         self.last_element_key += 1
         part_id += 10
-        node_ids = [self.corner_nodes[0], self.corner_nodes[3], self.corner_nodes[7], self.corner_nodes[4]]
+        node_ids = [self.plate_corner_nodes[0].id_, self.plate_corner_nodes[3].id_, self.plate_corner_nodes[7].id_, self.plate_corner_nodes[4].id_]
         new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
         if 'x' in [side.lower() for side in sides]:
             self.shell_elements[self.last_element_key] = ShellElementClass(
@@ -698,7 +727,7 @@ class FoamModel(object):
 
         self.last_element_key += 1
         part_id += 10
-        node_ids = [self.corner_nodes[1], self.corner_nodes[5], self.corner_nodes[6], self.corner_nodes[2]]
+        node_ids = [self.plate_corner_nodes[1].id_, self.plate_corner_nodes[5].id_, self.plate_corner_nodes[6].id_, self.plate_corner_nodes[2].id_]
         new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
         if 'x' in [side.lower() for side in sides]:
             self.shell_elements[self.last_element_key] = ShellElementClass(
@@ -709,7 +738,7 @@ class FoamModel(object):
 
         self.last_element_key += 1
         part_id += 10
-        node_ids = [self.corner_nodes[0], self.corner_nodes[4], self.corner_nodes[5], self.corner_nodes[1]]
+        node_ids = [self.plate_corner_nodes[0].id_, self.plate_corner_nodes[4].id_, self.plate_corner_nodes[5].id_, self.plate_corner_nodes[1].id_]
         new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
         if 'y' in [side.lower() for side in sides]:
             self.shell_elements[self.last_element_key] = ShellElementClass(
@@ -718,7 +747,7 @@ class FoamModel(object):
 
         self.last_element_key += 1
         part_id += 10
-        node_ids = [self.corner_nodes[2], self.corner_nodes[6], self.corner_nodes[7], self.corner_nodes[3]]
+        node_ids = [self.plate_corner_nodes[2].id_, self.plate_corner_nodes[6].id_, self.plate_corner_nodes[7].id_, self.plate_corner_nodes[3].id_]
         new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
         if 'y' in [side.lower() for side in sides]:
             self.shell_elements[self.last_element_key] = ShellElementClass(
@@ -727,7 +756,7 @@ class FoamModel(object):
 
         self.last_element_key += 1
         part_id += 10
-        node_ids = [self.corner_nodes[0], self.corner_nodes[1], self.corner_nodes[2], self.corner_nodes[3]]
+        node_ids = [self.plate_corner_nodes[0].id_, self.plate_corner_nodes[1].id_, self.plate_corner_nodes[2].id_, self.plate_corner_nodes[3].id_]
         new_coord_systems.append([node_ids[0], node_ids[1],node_ids[3]])
         if 'z' in [side.lower() for side in sides]:
             self.shell_elements[self.last_element_key] = ShellElementClass(
@@ -736,13 +765,16 @@ class FoamModel(object):
 
         self.last_element_key += 1
         part_id += 10
-        node_ids = [self.corner_nodes[4], self.corner_nodes[7], self.corner_nodes[6], self.corner_nodes[5]]
+        node_ids = [self.plate_corner_nodes[4].id_, self.plate_corner_nodes[7].id_, self.plate_corner_nodes[6].id_, self.plate_corner_nodes[5].id_]
         new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
         if 'z' in [side.lower() for side in sides]:
             self.shell_elements[self.last_element_key] = ShellElementClass(
                 self.nodes, self.last_element_key, part_id, node_ids
             )
         self.surfs = self.find_surfs()
+        for surf in self.find_side_surfs():
+            if surf != []:
+                self.surfs[surf[0]].slave = True
         self.coord_systems = new_coord_systems
 
     def create_node_list_in_plane(self, plane='z', plane_loc=0.0):
@@ -843,22 +875,13 @@ class FoamModel(object):
             edge_parts_pr_side.append(list(set(temp_side_parts).intersection(self.surfs.keys())))
         return edge_parts_pr_side
 
-    def increase_side_plate_dim(self, plane='x', offset = None): #Do this after deformation gradient has been assigned.
-        if self.tessellation.periodic == True: raise Exception('Invalid action for current tesselation')
-        plane_map={'x':0, 'y':1, 'z':2}
-        if offset == None:
-            offset = self.tessellation.domain_size * 0.2
-        offset_direction = [[-1, -1, -1],
-                            [1, -1, -1],
-                            [1, 1, -1],
-                            [-1, 1, -1],
-                            [-1, -1, 1],
-                            [1, -1, 1],
-                            [1, 1, 1],
-                            [-1, 1, 1]]
-        for i, node in enumerate(self.corner_nodes):
-            for direction in set([0,1,2])-set([plane_map[plane]]):
-                self.nodes[node].coord[direction] += offset_direction[i][direction]*offset[direction]
+    def delete_massless_nodes(self):
+        used_nodes = []
+        for element_iterable in [self.shell_elements.values(), self.beam_elements.values(), self.solid_elements.values()]:
+            for elem in element_iterable:
+                used_nodes.extend(elem.node_ids)
+        for node in list(set(self.nodes.keys())-set(used_nodes)):
+            del self.nodes[node]
 
 class SolidModel(object):
     def __init__(self, domain_size=np.array([1.0, 1.0, 1.0]), elem_size = 0.5):
@@ -917,7 +940,7 @@ class SolidModel(object):
         for node in self.nodes.values(): #node= list(self.nodes.values())[0]
             for i, corner_loc in enumerate(corner_locs):
                 if self.compare_arrays(node.coord,  corner_loc):
-                    corner_nodes[i] = node.id_
+                    corner_nodes[i] = node
         if 0 in corner_nodes:
             raise Exception('Could not find all eight corner nodes')
         return corner_nodes
@@ -925,7 +948,7 @@ class SolidModel(object):
     def compare_arrays(self, arr0, arr1, rel_tol=1e-07, abs_tol=0.0):
         return all([math.isclose(a, b, rel_tol=rel_tol, abs_tol=abs_tol) for a, b in zip(arr0, arr1)])
 
-    def create_side_elements(self, sides=['x', 'y', 'z'], overhang = 0.0 ):
+    def create_side_elements(self, sides=['x', 'y', 'z'], overhang=0.0 ):
         new_coord_systems = []
         part_id = 0
         plane_map = {'x': 0, 'y': 1, 'z': 2}
@@ -945,14 +968,14 @@ class SolidModel(object):
                 for direction in set([0, 1, 2]) - set([plane_map[plane]]):
                     self.nodes[last_node] = NodeClass(last_node,node.coord)
                     self.nodes[last_node].coord[direction] += offset_direction[i][direction] * overhang
-                    self.plate_corner_nodes.append(last_node)
+                    self.plate_corner_nodes.append(self.nodes[last_node])
                     last_node+=1
 
 
 
         last_shell = 1
         part_id += 10
-        node_ids = [self.plate_corner_nodes[0], self.plate_corner_nodes[3], self.plate_corner_nodes[7], self.plate_corner_nodes[4]]
+        node_ids = [self.plate_corner_nodes[0].id_, self.plate_corner_nodes[3].id_, self.plate_corner_nodes[7].id_, self.plate_corner_nodes[4].id_]
         new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
         if 'x' in [side.lower() for side in sides]:
             self.shell_elements[last_shell] = ShellElementClass(
@@ -961,7 +984,7 @@ class SolidModel(object):
 
         last_shell += 1
         part_id += 10
-        node_ids = [self.plate_corner_nodes[1], self.plate_corner_nodes[5], self.plate_corner_nodes[6], self.plate_corner_nodes[2]]
+        node_ids = [self.plate_corner_nodes[1].id_, self.plate_corner_nodes[5].id_, self.plate_corner_nodes[6].id_, self.plate_corner_nodes[2].id_]
         new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
         if 'x' in [side.lower() for side in sides]:
             self.shell_elements[last_shell] = ShellElementClass(
@@ -972,7 +995,7 @@ class SolidModel(object):
 
         last_shell += 1
         part_id += 10
-        node_ids = [self.plate_corner_nodes[0], self.plate_corner_nodes[4], self.plate_corner_nodes[5], self.plate_corner_nodes[1]]
+        node_ids = [self.plate_corner_nodes[0].id_, self.plate_corner_nodes[4].id_, self.plate_corner_nodes[5].id_, self.plate_corner_nodes[1].id_]
         new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
         if 'y' in [side.lower() for side in sides]:
             self.shell_elements[last_shell] = ShellElementClass(
@@ -981,7 +1004,7 @@ class SolidModel(object):
 
         last_shell += 1
         part_id += 10
-        node_ids = [self.plate_corner_nodes[2], self.plate_corner_nodes[6], self.plate_corner_nodes[7], self.plate_corner_nodes[3]]
+        node_ids = [self.plate_corner_nodes[2].id_, self.plate_corner_nodes[6].id_, self.plate_corner_nodes[7].id_, self.plate_corner_nodes[3].id_]
         new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
         if 'y' in [side.lower() for side in sides]:
             self.shell_elements[last_shell] = ShellElementClass(
@@ -990,7 +1013,7 @@ class SolidModel(object):
 
         last_shell += 1
         part_id += 10
-        node_ids = [self.plate_corner_nodes[0], self.plate_corner_nodes[1], self.plate_corner_nodes[2], self.plate_corner_nodes[3]]
+        node_ids = [self.plate_corner_nodes[0].id_, self.plate_corner_nodes[1].id_, self.plate_corner_nodes[2].id_, self.plate_corner_nodes[3].id_]
         new_coord_systems.append([node_ids[0], node_ids[1],node_ids[3]])
         if 'z' in [side.lower() for side in sides]:
             self.shell_elements[last_shell] = ShellElementClass(
@@ -999,7 +1022,7 @@ class SolidModel(object):
 
         last_shell += 1
         part_id += 10
-        node_ids = [self.plate_corner_nodes[4], self.plate_corner_nodes[7], self.plate_corner_nodes[6], self.plate_corner_nodes[5]]
+        node_ids = [self.plate_corner_nodes[4].id_, self.plate_corner_nodes[7].id_, self.plate_corner_nodes[6].id_, self.plate_corner_nodes[5].id_]
         new_coord_systems.append([node_ids[0], node_ids[1], node_ids[3]])
         if 'z' in [side.lower() for side in sides]:
             self.shell_elements[last_shell] = ShellElementClass(
