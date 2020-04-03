@@ -517,7 +517,7 @@ class FoamModel(object):
         total_volume = np.prod(self.tessellation.domain_size)
         return bulk_volume/total_volume
 
-    def set_rho(self, phi=None, rho=None):
+    def set_rho(self, rho=None, phi=None):
         if self.rho ==  None and rho == None:
             raise Exception('Relative density not defined')
         if rho != None:
