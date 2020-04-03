@@ -6,6 +6,292 @@ imp.reload(kw)
 import numpy as np
 import os
 import subprocess
+
+
+class BoundaryConditions(): #
+    def __init__(self, keyword, mesh_geometry):
+        self.keyword=keyword
+        self.mesh_geometry = mesh_geometry
+    def non_periodic_enclosed(self, def_gradient, rot_dof=0, phi=0.0, soft=1):
+        self.keyword.comment_block('Boundary conditions')
+        side_elements = self.mesh_geometry.find_side_surfs()
+        plane_locs= [0.0, self.mesh_geometry.tessellation.domain_size[0],
+                        0.0, self.mesh_geometry.tessellation.domain_size[1],
+                        0.0, self.mesh_geometry.tessellation.domain_size[2]]
+        planes = ['x', 'x', 'y', 'y', 'z', 'z']
+        face_nodes_list = []
+        for plane, plane_loc in zip(planes, plane_locs):
+            surf_element = self.mesh_geometry.surfs[side_elements[0][0]].elem_ids[0]
+            nodes = list(set(self.mesh_geometry.create_node_list_in_plane(plane=plane, plane_loc=plane_loc))
+                          - set(self.mesh_geometry.shell_elements[surf_element].node_ids)) #remove corner nodes
+            face_nodes_list.append(nodes)
+        face_core_nodes_list = []
+        for i, plane in enumerate(['x', 'y', 'z']):
+            if plane == 'x':
+                rem_nodes = set([node for node_list in face_nodes_list[2:] for node in node_list])
+            elif plane == 'y':
+                rem_nodes = set([node for node_list in [*face_nodes_list[:2], *face_nodes_list[4:]] for node in node_list])
+            elif plane == 'z':
+                rem_nodes = set([node for node_list in face_nodes_list[:4] for node in node_list])
+            # remNodes=set(np.array([sidePlateElement.nodes for sidePlateElement in sidePlateElements]).flatten())
+            # remNodes=set(list(np.array(coordinateSystems).flatten()))
+            face_core_nodes_list.append(list(set(face_nodes_list[i * 2]) - rem_nodes))
+            face_core_nodes_list.append(list(set(face_nodes_list[(i * 2) + 1]) - rem_nodes))
+
+        side_node_lists = [face_nodes_list[0], face_nodes_list[1],
+                         list(set(face_nodes_list[2]) - set(face_nodes_list[0]) - set(face_nodes_list[1])),
+                         list(set(face_nodes_list[3]) - set(face_nodes_list[0]) - set(face_nodes_list[1])),
+                         face_core_nodes_list[4],
+                         face_core_nodes_list[5]] #Remove nodes which would have been duplicated at the edges
+
+        side_faces_list = self.mesh_geometry.find_parts_for_box_contact()
+        def tiebreak_contact_node_to_surface(self, soft):
+            for i, side_element in enumerate(side_elements):
+                self.keyword.set_node_list(nsid=(i + 101), node_list=side_node_lists[i])
+                node_list = []
+                for face in side_faces_list[i]:
+                    for element in self.mesh_geometry.surfs[face].elem_ids:
+                        node_list.extend(self.mesh_geometry.shell_elements[element].node_ids)
+                side_faces_nodes = list(set(node_list) - set(side_node_lists[i]))
+                self.keyword.set_node_list(nsid=(i + 301), node_list=side_faces_nodes)
+                self.keyword.contact_tiebreak_nodes_to_surface(cid=(i + 101), ssid=(i + 101), msid=side_element, fs=0.0,
+                                                           fd=0.0, soft=soft, ignore=1)
+                self.keyword.contact_force_transducer(cid=(i + 201), ssid=side_element)
+                self.keyword.contact_automatic_nodes_to_surface(cid=(i + 301), ssid=(i + 301), msid=side_element,
+                                                            fs=0.0, fd=0.0, dc=0.0, soft=soft, ignore=1, depth=1)
+
+        if phi == 1.0:
+            side_node_lists = self.mesh_geometry.find_beam_node_on_side()
+            side_faces_list = [[]] * 6
+            tiebreak_contact_node_to_surface(self, soft)
+        else:
+            tiebreak_contact_node_to_surface(self, soft)
+
+        if rot_dof == 1:
+            for i, coord_nodes in enumerate(self.mesh_geometry.coord_systems):
+                if side_elements[i] != []:
+                    self.keyword.define_coordinate_nodes(cid=(i + 1), nodes=coord_nodes, flag=1)
+                    self.keyword.set_node_list(nsid=501 + i,
+                                               node_list=face_core_nodes_list[i])
+                    self.keyword.boundary_spc_set(bspcid=(i + 501), nsid=(i + 501), dofx=0, dofy=0, dofz=0, dofrx=1, dofry=1,
+                                                dofrz=0, cid=(i + 1))
+        corner_nodes = self.mesh_geometry.corner_nodes
+        self.def_grad_prescription(def_gradient, corner_nodes)
+        self.keyword.database_hist_node(nids=self.mesh_geometry.corner_nodes)
+        return self.keyword
+
+    def def_grad_prescription(self, def_gradient, corner_ref_nodes, disp_node_set = None):
+        disp_type = self.keyword.disp_type
+        for i, node in enumerate(corner_ref_nodes):
+            coords = self.mesh_geometry.nodes[node].coord
+            if disp_node_set != None:
+                self.keyword.set_node_list(nsid=10 + 10 * i, node_list=disp_node_set[i])
+            if len(def_gradient.shape) == 2:
+                u_gradient = def_gradient - np.identity(3)
+                u_disp = u_gradient.dot(coords)
+                time_inc = self.keyword.endtim
+                for j, node_disp in enumerate(u_disp):
+                    # (self, lcid, dist, tstart, tend, triseFrac=0.1, v0=0.0)
+                    if disp_type == 'disp':
+                        vad=2
+                        self.keyword.define_curve(lcid=10 * (i + 1) + (j + 1), abscissas=[0.0, time_inc],
+                                                  ordinates=[0, abs(node_disp)])
+                    elif disp_type == 'vel':
+                        vad=0
+                        self.keyword.define_curve_smooth(lcid=10 * (i + 1) + (j + 1), dist=abs(node_disp), tstart=0.0,
+                                                         tend=self.keyword.endtim, trise_frac=0.1)
+
+                    if disp_node_set != None:
+                        self.keyword.boundary_prescribed_motion_set(bmsid=10 * (i + 1) + (j + 1), nsid=10 + 10 * i,
+                                                                dof=(j + 1),
+                                                                vad=vad, lcid=10 * (i + 1) + (j + 1), #if implicit: vad = 2, else vad = 0
+                                                                sf=np.sign(node_disp),
+                                                                birth=0.0, death=self.keyword.endtim)
+                    else:
+                        self.keyword.boundary_prescribed_motion_node(bmsid=10 * (i + 1) + (j + 1), nid=node, dof=(j + 1),
+                                                                     vad=vad, lcid=10 * (i + 1) + (j + 1),
+                                                                     sf=np.sign(node_disp),
+                                                                     birth=0.0, death=self.keyword.endtim)
+
+
+
+
+            else:
+                u_gradient = np.array([temp - np.identity(3) for temp in def_gradient])
+                u_disp = np.array([temp.dot(coords) for temp in u_gradient])
+                du_disp = u_disp - np.insert(u_disp[:1, :], 0, np.array([0, 0, 0]), axis=0)
+                time_inc = self.keyword.endtim / len(du_disp)
+                for k, du_disp_step in enumerate(du_disp):
+                    for j, node_disp in enumerate(du_disp_step):
+                        np.sign(node_disp)
+                        if disp_type == 'disp':
+                            vad = 2
+                            self.keyword.define_curve(lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                      abscissas=[0.0, time_inc],
+                                                      ordinates=[0, abs(node_disp)])
+                        elif disp_type == 'vel':
+                            vad = 0
+                            self.keyword.define_curve_smooth(lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                             dist=abs(node_disp),
+                                                             tstart=0.0,
+                                                             tend=time_inc, trise_frac=0.1)
+
+                        if disp_node_set != None:
+                            self.keyword.boundary_prescribed_motion_node(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                         nid=node, dof=(j + 1),
+                                                                         vad=vad,
+                                                                         lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                         sf=np.sign(node_disp), birth=k * time_inc,
+                                                                         death=(k + 1) * time_inc)
+                        else:
+                            self.keyword.boundary_prescribed_motion_set(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                    nsid=10 + 10 * i, dof=(j + 1),
+                                                                    vad=vad, lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                    sf=np.sign(node_disp), birth=k * time_inc,
+                                                                    death=(k + 1) * time_inc)
+    ##################################################################################3
+    #Periodic
+    ##################################################################################################################
+
+    def get_nid_list(self, master_node, slave_nodes, corner_ref_nodes, origo_ref_nodes):
+        slave_node_ids = [slave_node[0] for slave_node in slave_nodes]
+        corner_ref_nodes = [node for cnode, ref_node in zip(corner_ref_nodes, origo_ref_nodes) for node in [cnode, ref_node]]
+        return [master_node] + slave_node_ids + corner_ref_nodes #nidList=[master_node] + slave_nod_ids + corner_ref_nodes
+
+    def get_coef_list(self, nid_list, slave_nodes, sorting='paired'):
+        coef_list_list = []
+        for slaveNode in slave_nodes:
+            periodicity = slaveNode[1:]
+            coef_list = [1]
+            for nid in nid_list[1:-6]:
+                if nid == slaveNode[0]:
+                    coef_list.append(-1)
+                else:
+                    coef_list.append(0)
+            for i, period in enumerate(periodicity):
+                if period == 0:
+                    coef_list.extend([0, 0])
+                else:
+                    coef_list.extend([1 * np.sign(period), -1 * np.sign(period)])
+            coef_list_list.append(coef_list)
+
+        coef_list_list = np.array(coef_list_list)
+        if sorting == 'paired':
+            for j in range(len(coef_list_list) - 1):
+                for i, coef_list in enumerate(coef_list_list[j + 1:]):
+                    coef_list_list[i + j + 1] = coef_list - coef_list_list[j]
+            return coef_list_list
+        elif sorting == 'identity':
+            for j in range(len(coef_list_list) - 1):
+                for i, coef_list in enumerate(coef_list_list[j + 1:]):
+                    coef_list_list[i + j + 1] = coef_list - coef_list_list[j]
+            for j in range(len(coef_list_list) - 1):
+                coef_list_list[-(j + 2)] = coef_list_list[-(j + 2)] + coef_list_list[-(j + 1)]
+            return coef_list_list
+        elif sorting == 'none':
+            return coef_list_list
+        else:
+            raise Exception('Invalid sorting key: {}. Choose "paired","identity" or "none" '.format(sorting))
+
+    def match_nid_coef(self, nid_list, coeff_list, ref_node=None):
+        temp_list = [[nid, coeff] for nid, coeff in zip(nid_list, coeff_list) if coeff != 0 and nid != ref_node]
+        temp_nid_list = list(map(int, np.array(temp_list)[:,0]))
+        temp_coeff_list = list(np.array(temp_list)[:,1])
+        return temp_nid_list, temp_coeff_list
+
+    def periodic_linear_local(self, def_gradient):
+        constrained_id_counter=9000001
+        ref_elements = list(self.mesh_geometry.solid_elements.values())
+        ref_nodes = [ref_elem.node_ids[0] for ref_elem in ref_elements]
+        self.keyword.boundary_spc_node(bspcid=9999, nid=ref_nodes[0], dofx=1, dofy=1, dofz=1)
+        corner_ref_nodes = ref_nodes[1:]
+        origo_ref_nodes = [ref_nodes[0]]*3
+        used_nodes_list=[]
+        self.keyword.comment_block('Periodic constraints')
+        master_node_list = [node.id_ for node in self.mesh_geometry.nodes.values() if node.master_to != []]
+        for master_node in master_node_list:
+            temp_slave_node = self.mesh_geometry.nodes[master_node].master_to
+            slave_nodes = [temp_slave_node[i*4:i*4+4] for i in range(len(temp_slave_node[::4]))]
+            nid_list = self.get_nid_list(master_node, slave_nodes, corner_ref_nodes, origo_ref_nodes)
+            for nid in nid_list[:-6]:
+                if nid in used_nodes_list:
+                    print(nid_list)
+                    raise Exception('Node {} used twice in relation'.format(nid))
+                else:
+                    used_nodes_list.append(nid)
+            used_nodes_list.append(master_node)
+            coeff_list = self.get_coef_list(nid_list, slave_nodes, sorting='paired')
+            for coeffs in coeff_list: #coeffs = coeff_list[0]
+                temp_nids, temp_coeffs = self.match_nid_coef(nid_list, coeffs, ref_node=ref_nodes[0])
+                for direction in range(0, 3):
+                    self.keyword.constrained_linear_local(lcid=constrained_id_counter, nid_list=temp_nids,
+                                                        coeff_list=temp_coeffs, direction=direction + 1)
+                    constrained_id_counter += 1
+
+        #####################################################################
+        #Element displacemente
+        #####################################################################
+        self.def_grad_prescription(def_gradient, corner_ref_nodes)
+        self.keyword.database_hist_node(nids=ref_nodes)
+        return self.keyword
+
+    def periodic_multiple_global(self, def_gradient):
+        constrained_id_counter = 9000001
+        ref_elements = list(self.mesh_geometry.solid_elements.values())
+        ref_nodes = [ref_elem.node_ids[0] for ref_elem in ref_elements]
+        corner_ref_nodes = ref_nodes[1:]
+        origo_ref_nodes = [ref_nodes[0]] * 3
+        used_nodes_list = []
+        global_constr_list = [[], [], []]
+        self.keyword.comment_block('Periodic constraints')
+        master_node_list = [node.id_ for node in self.mesh_geometry.nodes.values() if node.master_to != []]
+        for master_node in master_node_list:
+            temp_slave_node = self.mesh_geometry.nodes[master_node].master_to
+            slave_nodes = [temp_slave_node[i * 4:i * 4 + 4] for i in range(len(temp_slave_node[::4]))]
+            nid_list = self.get_nid_list(master_node, slave_nodes, corner_ref_nodes, origo_ref_nodes)
+            for nid in nid_list[:-6]:
+                if nid in used_nodes_list:
+                    print(nid_list)
+                    raise Exception('Node {} used twice in relation'.format(nid))
+                else:
+                    used_nodes_list.append(nid)
+            used_nodes_list.append(master_node)
+            coeff_list = self.get_coef_list(nid_list, slave_nodes, sorting='identity')
+            for coeffs in coeff_list:
+                temp_nids, temp_coeffs = self.match_nid_coef(nid_list, coeffs, ref_node=ref_nodes[0])
+                for direction in range(0, 3):
+                    temp_global_dict = {}
+                    temp_global_dict['nmp'] = len(temp_nids)
+                    temp_global_dict['nid_list'] = temp_nids
+                    temp_global_dict['coeff_list'] = temp_coeffs
+                    global_constr_list[direction].append(temp_global_dict)
+
+        for direction in range(0, 3):
+            self.keyword.constrained_multiple_global(id=constrained_id_counter, constr_list=global_constr_list[direction],
+                                                   direction=direction + 1)
+            constrained_id_counter += 1
+
+        #####################################################################
+        # Element displacemente
+        #####################################################################
+        self.def_grad_prescription(def_gradient, [ref_elem.node_ids[0] for ref_elem in ref_elements],
+                                   disp_node_set=[ref_elem.node_ids[1:] for ref_elem in ref_elements])
+        self.keyword.database_hist_node(nids=ref_nodes)
+        self.keyword.set_node_list(nsid=888888 - 1, node_list=[ref_elements[0].node_ids[0]])
+        self.keyword.database_nodfor_group(nsid=888888 - 1)
+        for i in range(3):
+            self.keyword.set_node_list(nsid=888888 + i, node_list=[ref_elements[i+1].node_ids[0]])
+            self.keyword.database_nodfor_group(nsid=888888 + i)
+
+        return self.keyword
+
+    def single_element(self, def_gradient):
+        corner_nodes = self.mesh_geometry.corner_nodes
+        self.def_grad_prescription(self, def_gradient, corner_nodes)
+        self.keyword.database_hist_node(nids=corner_nodes)
+        return self.keyword
+#keyword = Keyword(r'H:\thesis\periodic\representative\S05R1\ID1\testKey.key')
+#self = BoundaryConditions(keyword, mesh_geometry)
 #def_gradient = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 0.2]])
 def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi=0.0, material_data={}, **kwargs):
     options = {
@@ -194,7 +480,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
 
     #def_gradient = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 0.2]])
     keyword.node(mesh_geometry.nodes)
-    BCs = kw.BoundaryConditions(keyword, mesh_geometry)
+    BCs = BoundaryConditions(keyword, mesh_geometry)
     if options['sim_type'] == 'implicit':
         keyword.disp_type = 'disp'
 
@@ -233,4 +519,3 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
         os.chdir(rem_working_folder)
     #return readASCI.readrwforc(workingFolder=workingFolder)
 
-periodic_template(tessellation, 'testcsa_sigma.key', def_gradient, csa_sigma=0.1, tt_sigma=0.1)
