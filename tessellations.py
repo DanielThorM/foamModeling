@@ -1,11 +1,11 @@
 import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import copy
 import scipy.optimize
 import scipy.integrate
 import os
 import subprocess
-import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
@@ -1149,13 +1149,13 @@ class Tessellation(object):
         fig.tight_layout()
 
 
-#folderName = r'H:\thesis\periodic\representative\S05R20\ID1'
+#folderName = r'H:\thesis\periodic\representative\S05R1\ID1'
 #mesh_file_name = folderName + r'\\test'
 #self = Tessellation(folderName + r'\\nfrom_morpho-id1.tess')
 #self.regularize(n=int(len(self.edges.keys())/2))
 #self.mesh_file_name=mesh_file_name
 #self.mesh2D(elem_size=0.02)
-
+#tessellation=self
 
 #folderName = r'H:\thesis\linear\representative\S05R1\ID1'
 #mesh_file_name = folderName + r'\\test'
