@@ -285,10 +285,66 @@ class BoundaryConditions(): #
 
         return self.keyword
 
-    def single_element(self, def_gradient):
+    def solid_element_single(self, def_gradient):
         corner_nodes = self.mesh_geometry.corner_nodes
-        self.def_grad_prescription(self, def_gradient, corner_nodes)
+        self.def_grad_prescription(def_gradient, corner_nodes)
         self.keyword.database_hist_node(nids=[node.id_ for node in corner_nodes])
+        return self.keyword
+
+    def solid_elements_enclosed(self, def_gradient, rot_dof=0, soft=1):
+        self.keyword.comment_block('Boundary conditions')
+        side_parts = [surf[0] for surf in self.mesh_geometry.find_side_surfs() if surf != []]
+        side_elements = [self.mesh_geometry.shell_elements[elem].id_ for surf in side_parts for elem in self.mesh_geometry.surfs[surf].elem_ids]
+        plane_locs= [0.0, self.mesh_geometry.domain_size[0],
+                        0.0, self.mesh_geometry.domain_size[1],
+                        0.0, self.mesh_geometry.domain_size[2]]
+        planes = ['x', 'x', 'y', 'y', 'z', 'z']
+        face_nodes_list = []
+        i=0
+        for plane, plane_loc in zip(planes, plane_locs):
+            nodes = list(set(self.mesh_geometry.create_node_list_in_plane(plane=plane, plane_loc=plane_loc))
+                          - set([node.id_ for node in self.mesh_geometry.plate_corner_nodes])) #remove plate corner nodes
+            face_nodes_list.append(nodes)
+            i += 1
+        face_core_nodes_list = []
+        for i, plane in enumerate(['x', 'y', 'z']):
+            if plane == 'x':
+                rem_nodes = set([node for node_list in face_nodes_list[2:] for node in node_list])
+            elif plane == 'y':
+                rem_nodes = set([node for node_list in [*face_nodes_list[:2], *face_nodes_list[4:]] for node in node_list])
+            elif plane == 'z':
+                rem_nodes = set([node for node_list in face_nodes_list[:4] for node in node_list])
+            face_core_nodes_list.append(list(set(face_nodes_list[i * 2]) - rem_nodes))
+            face_core_nodes_list.append(list(set(face_nodes_list[(i * 2) + 1]) - rem_nodes))
+
+        side_node_lists = [face_nodes_list[0], face_nodes_list[1],
+                         list(set(face_nodes_list[2]) - set(face_nodes_list[0]) - set(face_nodes_list[1])),
+                         list(set(face_nodes_list[3]) - set(face_nodes_list[0]) - set(face_nodes_list[1])),
+                         face_core_nodes_list[4],
+                         face_core_nodes_list[5]] #Remove nodes which would have been duplicated at the edges #
+        ## Specifiy compression platten direction to assign nodes to correct plane
+
+
+        def tiebreak_contact_node_to_surface(self, soft):
+            for i, side_part in enumerate(side_parts):
+                self.keyword.set_node_list(nsid=(i + 101), node_list=side_node_lists[i])
+                self.keyword.contact_tiebreak_nodes_to_surface(cid=(i + 101), ssid=(i + 101), msid=side_part, fs=0.0,
+                                                           fd=0.0, soft=soft, ignore=1)
+                self.keyword.contact_force_transducer(cid=(i + 201), ssid=side_part)
+
+        tiebreak_contact_node_to_surface(self, soft)
+
+        if rot_dof == 1:
+            for i, coord_nodes in enumerate(self.mesh_geometry.coord_systems):
+                if side_elements[i] != []:
+                    self.keyword.define_coordinate_nodes(cid=(i + 1), nodes=coord_nodes, flag=1)
+                    self.keyword.set_node_list(nsid=501 + i,
+                                               node_list=face_core_nodes_list[i])
+                    self.keyword.boundary_spc_set(bspcid=(i + 501), nsid=(i + 501), dofx=0, dofy=0, dofz=0, dofrx=1, dofry=1,
+                                                dofrz=0, cid=(i + 1))
+        corner_nodes = self.mesh_geometry.corner_nodes
+        self.def_grad_prescription(def_gradient, corner_nodes, ref_node_set= [[nid.id_] for nid in self.mesh_geometry.plate_corner_nodes])
+        self.keyword.database_hist_node(nids=self.mesh_geometry.plate_corner_nodes)
         return self.keyword
 
 def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi=0.0, material_data={}, **kwargs):
@@ -594,6 +650,7 @@ def non_periodic_template(tessellation, model_file_name, def_gradient, rho=0.05,
     keyword.database_bndout(dt=keyword.endtim / sampling_number)
 
     keyword.comment_block('Material, sections and parts')
+
     if material['mat_type'] == 'mat24':
         material['e']
         if material['stress'] != None:
@@ -757,8 +814,254 @@ def non_periodic_template(tessellation, model_file_name, def_gradient, rho=0.05,
         os.chdir(rem_working_folder)
     #return readASCI.readrwforc(workingFolder=workingFolder)
 
+def solid_elements_template(def_gradient, model_file_name, material_data={}, domain_size = np.array([1.0, 1.0, 1.0]), elem_size = 1.0, **kwargs):
+    options = {
+        'elem_type': 2,
+        'strain_rate': 1.0,
+        'size_coeff': 1.0,
+        'strain_coeff': 1.0,
+        'n_steps_coeff': 500,
+        'run': False,
+        'return_copy': False,
+        'sim_type': 'explicit',
+        'side_plates': ['x', 'y', 'z'],
+        'overhang': 0.0,
+        'dt2ms': 0.0
+    }
+    options.update(kwargs)
+    material = {
+        'e': 1500,
+        'sigy': 25.0,
+        'etan': 1.0,
+        'pr': 0.3,
+        'ro': 9.2e-10,
+        'matfail': 2.0,
+        'soften': False,
+        'stress': None,
+        'strain': None,
+        'rate_c': 0.0,
+        'rate_p': 0.0,
+        'rate_mod': None,  # [slope1, slope2, base_rate, break_rate], eg. [0.075, 0.2, 1e-3, 3e1]
+        'mat_type': 'mat24',  # 'mat181'
+        'fs': 0.0,
+        'fd': 0.0,
+        'dc': 0.0
+    }
+    material.update(material_data)
+
+    mesh_geometry = mm.SolidModel(domain_size=domain_size, elem_size = elem_size)
+    mesh_geometry.create_side_elements(options['side_plates'], options['overhang'])
+    keyword = kw.Keyword(model_file_name)
+
+    keyword.comment_block('Control')
+    keyword.control_structured()
+    endtim = options['strain_coeff'] * options['size_coeff'] / options['strain_rate']
+    keyword.control_termination(endtim=endtim)
+    sampling_number = (options['n_steps_coeff'] * options['size_coeff'] * options['strain_coeff'])
+    if options['sim_type'] == 'implicit':
+        keyword.control_implicit_general(imflag=1,
+                                         dt0=endtim / sampling_number)
+        keyword.control_implicit_auto(dtmin=endtim / (sampling_number * 100), dtmax=endtim * 2 / sampling_number,
+                                      iteopt=25)
+        keyword.control_contact(shlthk=2)
+        iacc = 1
+        if options['elem_type'] == 2:
+            iacc = 0
+        keyword.control_accuracy(osu=1, inn=2, iacc=iacc)
+        keyword.control_shell(istupd=4, psstupd=0, irnxx=-2, miter=2, nfail1=1, nfail4=1, esort=2)
+        keyword.control_implicit_solution(dctol=5e-5, ectol=5e-4)
+        keyword.control_implicit_solver()
+        keyword.control_implicit_dynamics()
+
+    else:
+        keyword.control_timestep(dt2ms=options['dt2ms'], tssfac=0.9)
+        keyword.control_shell(istupd=4, psstupd=-99)
+
+    keyword.comment_block('Database')
+    keyword.database_glstat(dt=endtim / sampling_number)
+    keyword.database_binary_d3_plot(dt=endtim / (30 * options['size_coeff'] * options['strain_coeff']))
+    keyword.database_nodout(dt=keyword.endtim / sampling_number)
+    keyword.database_nodfor(dt=keyword.endtim / sampling_number)
+    keyword.database_spcforc(dt=keyword.endtim / sampling_number)
+    keyword.database_bndout(dt=keyword.endtim / sampling_number)
+
+    if material['mat_type'] == 'mat24':
+        material['e']
+        if material['stress'] != None:
+            keyword.define_curve(lcid=100, abscissas=material['strain'], ordinates=material['stress'])
+            keyword.mat24(mid=1, e=material['e'], sigy=material['stress'][0], fail=material['matfail'],
+                          ro=material['ro'], lcss=100)
+        elif material['rate_mod'] != None:
+            keyword.mat24_rate(mid=1, e=material['e'], sigy=material['sigy'], fail=material['matfail'],
+                               etan=material['etan'], ro=material['ro'], pr=material['pr'],
+                               str_mod=material['rate_mod'], soften = material['soften'])  # DefaultParams, check LSKey
+        elif material['soften']==True:
+            mat_dict=keyword.soften_yield_curve(youngs=material['e'], sigy=material['sigy'], etan=material['etan'])
+            keyword.define_curve(lcid=100, abscissas=mat_dict['strain'], ordinates=mat_dict['stress'])
+            keyword.mat24(mid=1, e=material['e'], sigy=mat_dict['stress'][0], fail=material['matfail'],
+                          ro=material['ro'], lcss=100)
+        else:
+            keyword.mat24(mid=1, e=material['e'], sigy=material['sigy'], fail=material['matfail'],
+                          etan=material['etan'], pr=material['pr'], c=material['rate_c'], p=material['rate_c'],
+                          ro=material['ro'])
+
+    elif material['mat_type'] == 'mat181':
+        if material['strain'] == None:
+            mat_dict=keyword.soften_yield_curve(youngs=material['e'], sigy=material['sigy'], etan=material['etan'])
+            mat_dict={'strain':list(-1*np.array(mat_dict['strain'])[::-1]) + list(mat_dict['strain'][1:]),
+                      'stress':list(-1*np.array(mat_dict['stress'])[::-1]) + list(mat_dict['stress'][1:])}
+            keyword.defineCurve(lcid=100, abscissas=mat_dict['strain'], ordinates=mat_dict['stress'])
+        else:
+            keyword.defineCurve(lcid=100, abscissas=material['strain'], ordinates=material['stress'])
+        keyword.mat181(mid=1, youngs=mat_dict['E'], ro=material['ro'], lcid=100)
+
+    #keyword.mat_null(mid=2, e = material['e'])
+    keyword.mat24(mid=2, e=material['e']/30, sigy=0.0001, fail=0.0, etan=0.00001)
+    keyword.mat24(mid=3, e=material['e']*10, sigy=100000, fail=0.0, etan=1000)
+
+    keyword.element_solid(mesh_geometry.solid_elements)
+    for solid in mesh_geometry.solids.values():
+        keyword.section_solid(secid=solid.id_, elform=options['elem_type'])
+        keyword.part_contact(pid=solid.id_, secid=solid.id_, mid=1,
+                             fs=material['fs'], fd=material['fd'], dc=material['dc'])
+
+    keyword.element_shell_offset(mesh_geometry.shell_elements, offset=-0.05)
+    if len(options['side_plates'])>1:
+        mid = 2
+    else:
+        mid = 3
+    for surf in mesh_geometry.surfs.values():
+        keyword.section_shell(secid=surf.id_, t1=0.1, elform=options['elem_type'])
+        keyword.part_contact(pid=surf.id_, secid=surf.id_, mid=mid,
+                             fs=material['fs'], fd=material['fd'], dc=material['dc'])
+    keyword.node(mesh_geometry.nodes)
+    keyword.disp_type = 'vel'
+    #Boundary conditions
+    BCs = BoundaryConditions(keyword, mesh_geometry)
+    keyword = BCs.solid_elements_enclosed(def_gradient)
+    keyword.end_key()
+    keyword.write_key()
+
+def single_elements_template(def_gradient, model_file_name, material_data={}, domain_size = np.array([1.0, 1.0, 1.0]), elem_size = 1.0, **kwargs):
+    options = {
+        'elem_type': 2,
+        'strain_rate': 1.0,
+        'size_coeff': 1.0,
+        'strain_coeff': 1.0,
+        'n_steps_coeff': 500,
+        'run': False,
+        'return_copy': False,
+        'sim_type': 'implicit',
+        'side_plates': [],
+        'overhang': 0.0,
+        'dt2ms': 0.0
+    }
+    options.update(kwargs)
+    material = {
+        'e': 1500,
+        'sigy': 25.0,
+        'etan': 1.0,
+        'pr': 0.3,
+        'ro': 9.2e-10,
+        'matfail': 2.0,
+        'soften': False,
+        'stress': None,
+        'strain': None,
+        'rate_c': 0.0,
+        'rate_p': 0.0,
+        'rate_mod': None,  # [slope1, slope2, base_rate, break_rate], eg. [0.075, 0.2, 1e-3, 3e1]
+        'mat_type': 'mat24',  # 'mat181'
+        'fs': 0.76,
+        'fd': 0.76,
+        'dc': 0.0
+    }
+    material.update(material_data)
+
+    mesh_geometry = mm.SolidModel(domain_size=domain_size, elem_size = elem_size)
+    keyword = kw.Keyword(model_file_name)
+
+    keyword.comment_block('Control')
+    keyword.control_structured()
+    endtim = options['strain_coeff'] * options['size_coeff'] / options['strain_rate']
+    keyword.control_termination(endtim=endtim)
+    sampling_number = (options['n_steps_coeff'] * options['size_coeff'] * options['strain_coeff'])
+    if options['sim_type'] == 'implicit':
+        keyword.control_implicit_general(imflag=1,
+                                         dt0=endtim / sampling_number)
+        keyword.control_implicit_auto(dtmin=endtim / (sampling_number * 100), dtmax=endtim * 2 / sampling_number,
+                                      iteopt=25)
+        keyword.control_contact(shlthk=2)
+        iacc = 1
+        if options['elem_type'] == 2:
+            iacc = 0
+        keyword.control_accuracy(osu=1, inn=2, iacc=iacc)
+        keyword.control_shell(istupd=4, psstupd=0, irnxx=-2, miter=2, nfail1=1, nfail4=1, esort=2)
+        keyword.control_implicit_solution(dctol=5e-5, ectol=5e-4)
+        keyword.control_implicit_solver()
+        keyword.control_implicit_dynamics()
+
+    else:
+        keyword.control_timestep(dt2ms=options['dt2ms'], tssfac=0.9)
+
+    keyword.comment_block('Database')
+    keyword.database_glstat(dt=endtim / sampling_number)
+    keyword.database_binary_d3_plot(dt=endtim / (30 * options['size_coeff'] * options['strain_coeff']))
+    keyword.database_nodout(dt=keyword.endtim / sampling_number)
+    keyword.database_nodfor(dt=keyword.endtim / sampling_number)
+    keyword.database_spcforc(dt=keyword.endtim / sampling_number)
+    keyword.database_bndout(dt=keyword.endtim / sampling_number)
+
+    if material['mat_type'] == 'mat24':
+        material['e']
+        if material['stress'] != None:
+            keyword.define_curve(lcid=100, abscissas=material['strain'], ordinates=material['stress'])
+            keyword.mat24(mid=1, e=material['e'], sigy=material['stress'][0], fail=material['matfail'],
+                          ro=material['ro'], lcss=100)
+        elif material['rate_mod'] != None:
+            keyword.mat24_rate(mid=1, e=material['e'], sigy=material['sigy'], fail=material['matfail'],
+                               etan=material['etan'], ro=material['ro'], pr=material['pr'],
+                               str_mod=material['rate_mod'], soften = material['soften'])  # DefaultParams, check LSKey
+        elif material['soften']==True:
+            mat_dict=keyword.soften_yield_curve(youngs=material['e'], sigy=material['sigy'], etan=material['etan'])
+            keyword.define_curve(lcid=100, abscissas=mat_dict['strain'], ordinates=mat_dict['stress'])
+            keyword.mat24(mid=1, e=material['e'], sigy=mat_dict['stress'][0], fail=material['matfail'],
+                          ro=material['ro'], lcss=100)
+        else:
+            keyword.mat24(mid=1, e=material['e'], sigy=material['sigy'], fail=material['matfail'],
+                          etan=material['etan'], pr=material['pr'], c=material['rate_c'], p=material['rate_c'],
+                          ro=material['ro'])
+
+    elif material['mat_type'] == 'mat181':
+        if material['strain'] == None:
+            mat_dict=keyword.soften_yield_curve(youngs=material['e'], sigy=material['sigy'], etan=material['etan'])
+            mat_dict={'strain':list(-1*np.array(mat_dict['strain'])[::-1]) + list(mat_dict['strain'][1:]),
+                      'stress':list(-1*np.array(mat_dict['stress'])[::-1]) + list(mat_dict['stress'][1:])}
+            keyword.defineCurve(lcid=100, abscissas=mat_dict['strain'], ordinates=mat_dict['stress'])
+        else:
+            keyword.defineCurve(lcid=100, abscissas=material['strain'], ordinates=material['stress'])
+        keyword.mat181(mid=1, youngs=mat_dict['E'], ro=material['ro'], lcid=100)
+
+    #keyword.mat_null(mid=2, e = material['e'])
+    keyword.mat24(mid=2, e=material['e']/30, sigy=0.0001, fail=0.0, etan=0.00001)
+    keyword.mat24(mid=3, e=material['e']*10, sigy=100000, fail=0.0, etan=1000)
+
+    keyword.element_solid(mesh_geometry.solid_elements)
+    for solid in mesh_geometry.solids.values():
+        keyword.section_solid(secid=solid.id_, elform=options['elem_type'])
+        keyword.part_contact(pid=solid.id_, secid=solid.id_, mid=1,
+                             fs=material['fs'], fd=material['fd'], dc=material['dc'])
+
+    keyword.node(mesh_geometry.nodes)
+    keyword.disp_type = 'vel'
+    #Boundary conditions
+    BCs = BoundaryConditions(keyword, mesh_geometry)
+    keyword = BCs.solid_element_single(def_gradient)
+    keyword.end_key()
+    keyword.write_key()
+
+
 
 #def_gradient = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1.2]])
 os.chdir(r'H:\thesis\periodic\representative\S05R1\ID1')
 
-periodic_template(tessellation, model_file_name, def_gradient, sim_type='implicit', strain_coeff = 0.2, strain_rate = 1e2, size_coeff = 0.5)
+#periodic_template(tessellation, model_file_name, def_gradient, sim_type='implicit', strain_coeff = 0.2, strain_rate = 1e2, size_coeff = 0.5)
