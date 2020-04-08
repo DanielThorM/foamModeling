@@ -38,27 +38,87 @@ class BoundaryConditions:#
             face_core_nodes_list.append(list(set(face_nodes_list[i * 2]) - rem_nodes))
             face_core_nodes_list.append(list(set(face_nodes_list[(i * 2) + 1]) - rem_nodes))
 
-        side_node_lists = [face_nodes_list[0], face_nodes_list[1],
-                         list(set(face_nodes_list[2]) - set(face_nodes_list[0]) - set(face_nodes_list[1])),
-                         list(set(face_nodes_list[3]) - set(face_nodes_list[0]) - set(face_nodes_list[1])),
-                         face_core_nodes_list[4],
-                         face_core_nodes_list[5]] #Remove nodes which would have been duplicated at the edges
+        full_side_part_list = self.mesh_geometry.find_side_surfs()
+        side_node_lists = [[], [], [], [], [], []]
+        if len(side_parts) == 2:
+            plane_combinations={0:[[[1], [0, 0, 0], [0]],
+                                   [[1], [0, 0, 0], [0]],
+                                   [[0], [1, 0, 1], [0]],
+                                   [[0], [1, 0, 1], [0]],
+                                   [[0], [0, 0, 0], [1]],
+                                   [[0], [0, 0, 0], [1]]],
+                                2:[[[0], [0, 0, 0], [1]],
+                                   [[0], [0, 0, 0], [1]],
+                                   [[1], [0, 0, 0], [0]],
+                                   [[1], [0, 0, 0], [0]],
+                                   [[0], [1, 2, 3], [0]],
+                                   [[0], [1, 2, 3], [0]]],
+                                4:[[[0], [1, 4, 5], [0]],
+                                   [[0], [1, 4, 5], [0]],
+                                   [[0], [0, 0, 0], [1]],
+                                   [[0], [0, 0, 0], [1]],
+                                   [[1], [0, 0, 0], [0]],
+                                   [[1], [0, 0, 0], [0]]]}
+            for i in range(0, 6, 2):
+                if full_side_part_list[i] != []:
+                    plane_combination = plane_combinations[i]
+                    break
+        elif len(side_parts) == 4:
+            plane_combinations = {4: [[[1], [0, 0, 0], [0]],
+                                      [[1], [0, 0, 0], [0]],
+                                      [[0], [1, 0, 1], [0]],
+                                      [[0], [1, 0, 1], [0]],
+                                      [[0], [0, 0, 0], [1]],
+                                      [[0], [0, 0, 0], [1]]],
+                                  0: [[[0], [0, 0, 0], [1]],
+                                      [[0], [0, 0, 0], [1]],
+                                      [[1], [0, 0, 0], [0]],
+                                      [[1], [0, 0, 0], [0]],
+                                      [[0], [1, 2, 3], [0]],
+                                      [[0], [1, 2, 3], [0]]],
+                                  2: [[[0], [1, 4, 5], [0]],
+                                      [[0], [1, 4, 5], [0]],
+                                      [[0], [0, 0, 0], [1]],
+                                      [[0], [0, 0, 0], [1]],
+                                      [[1], [0, 0, 0], [0]],
+                                      [[1], [0, 0, 0], [0]]]}
+            for i in range(0, 6, 2):
+                if full_side_part_list[i] == []:
+                    plane_combination = plane_combinations[i]
+                    break
+        else:
+            plane_combination =     [[[1], [0, 0, 0], [0]],
+                                      [[1], [0, 0, 0], [0]],
+                                      [[0], [1, 0, 1], [0]],
+                                      [[0], [1, 0, 1], [0]],
+                                      [[0], [0, 0, 0], [1]],
+                                      [[0], [0, 0, 0], [1]]]
+
+        for i in range(6):
+            side_node_lists[i].extend(face_nodes_list[i] * plane_combination[i][0][0])
+            side_node_lists[i].extend(list(set(face_nodes_list[i])
+                                           - set(face_nodes_list[plane_combination[i][1][1]])
+                                           - set(face_nodes_list[plane_combination[i][1][2]])
+                                           )* plane_combination[i][1][0])
+            side_node_lists[i].extend(face_core_nodes_list[i] * plane_combination[i][2][0])
 
         side_faces_list = self.mesh_geometry.find_parts_for_box_contact()
         def tiebreak_contact_node_to_surface(self, soft):
-            for i, side_part in enumerate(side_parts):
-                self.keyword.set_node_list(nsid=(i + 101), node_list=side_node_lists[i])
-                node_list = []
-                for face in side_faces_list[i]:
-                    for element in self.mesh_geometry.surfs[face].elem_ids:
-                        node_list.extend(self.mesh_geometry.shell_elements[element].node_ids)
-                side_faces_nodes = list(set(node_list) - set(side_node_lists[i]))
-                self.keyword.set_node_list(nsid=(i + 301), node_list=side_faces_nodes)
-                self.keyword.contact_tiebreak_nodes_to_surface(cid=(i + 101), ssid=(i + 101), msid=side_part, fs=0.0,
-                                                           fd=0.0, soft=soft, ignore=1)
-                #self.keyword.contact_force_transducer(cid=(i + 201), ssid=side_part)
-                self.keyword.contact_automatic_nodes_to_surface(cid=(i + 301), ssid=(i + 301), msid=side_part,
-                                                            fs=0.0, fd=0.0, dc=0.0, soft=soft, ignore=1, depth=1)
+            for i, side_part in enumerate(full_side_part_list):
+                if side_part != []:
+                    side_part=side_part[0]
+                    self.keyword.set_node_list(nsid=(i + 101), node_list=side_node_lists[i])
+                    node_list = []
+                    for face in side_faces_list[i]:
+                        for element in self.mesh_geometry.surfs[face].elem_ids:
+                            node_list.extend(self.mesh_geometry.shell_elements[element].node_ids)
+                    side_faces_nodes = list(set(node_list) - set(side_node_lists[i]))
+                    self.keyword.set_node_list(nsid=(i + 301), node_list=side_faces_nodes)
+                    self.keyword.contact_tiebreak_nodes_to_surface(cid=(i + 101), ssid=(i + 101), msid=side_part, fs=0.0,
+                                                               fd=0.0, soft=soft, ignore=1)
+                    #self.keyword.contact_force_transducer(cid=(i + 201), ssid=side_part)
+                    self.keyword.contact_automatic_nodes_to_surface(cid=(i + 301), ssid=(i + 301), msid=side_part,
+                                                                fs=0.0, fd=0.0, dc=0.0, soft=soft, ignore=1, depth=1)
 
         if phi == 1.0:
             side_node_lists = self.mesh_geometry.find_beam_node_on_side()
