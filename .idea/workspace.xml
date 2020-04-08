@@ -90,10 +90,11 @@
       <file leaf-file-name="modeltemplates.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/modeltemplates.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="858">
-              <caret line="93" column="60" lean-forward="true" selection-start-line="93" selection-start-column="60" selection-end-line="93" selection-end-column="60" />
+            <state relative-caret-position="253">
+              <caret line="141" lean-forward="true" selection-start-line="141" selection-end-line="141" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
+                <element signature="e#384#8406#0" />
                 <element signature="e#2666#3746#0" />
                 <element signature="e#4920#9654#0" />
                 <element signature="e#10365#11880#0" />
@@ -270,7 +271,7 @@
       <window_info anchor="bottom" id="Event Log" order="7" side_tool="true" />
       <window_info anchor="bottom" id="Database Changes" order="7" show_stripe_button="false" />
       <window_info anchor="bottom" id="Version Control" order="7" />
-      <window_info active="true" anchor="bottom" id="Python Console" order="7" visible="true" weight="0.251634" />
+      <window_info anchor="bottom" id="Python Console" order="7" weight="0.251634" />
       <window_info anchor="bottom" id="Run" order="2" />
       <window_info anchor="bottom" id="Terminal" order="7" />
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.20042644" />
@@ -386,6 +387,7 @@
           <caret line="14" column="24" lean-forward="true" selection-start-line="14" selection-start-column="24" selection-end-line="14" selection-end-column="24" />
           <folding>
             <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#384#8406#0" />
             <element signature="e#2666#3746#0" />
             <element signature="e#4920#9654#0" />
             <element signature="e#10365#11880#0" />
@@ -487,10 +489,11 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/modeltemplates.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="858">
-          <caret line="93" column="60" lean-forward="true" selection-start-line="93" selection-start-column="60" selection-end-line="93" selection-end-column="60" />
+        <state relative-caret-position="253">
+          <caret line="141" lean-forward="true" selection-start-line="141" selection-end-line="141" />
           <folding>
             <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#384#8406#0" />
             <element signature="e#2666#3746#0" />
             <element signature="e#4920#9654#0" />
             <element signature="e#10365#11880#0" />

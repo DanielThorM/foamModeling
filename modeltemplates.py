@@ -12,7 +12,7 @@ class BoundaryConditions:#
     def __init__(self, keyword, mesh_geometry):
         self.keyword=keyword
         self.mesh_geometry = mesh_geometry
-    def non_periodic_enclosed(self, def_gradient, rot_dof=0, phi=0.0, soft=1):
+    def non_periodic(self, def_gradient, rot_dof=0, phi=0.0, soft=1):
         self.keyword.comment_block('Boundary conditions')
         side_parts = [surf[0] for surf in self.mesh_geometry.find_side_surfs() if surf != []]
         side_elements = [self.mesh_geometry.shell_elements[elem].id_ for surf in side_parts for elem in self.mesh_geometry.surfs[surf].elem_ids]
@@ -796,7 +796,7 @@ def non_periodic_template(tessellation, model_file_name, def_gradient, rho=0.05,
 
     if len(options['side_plates']) == 1 and options['overhang'] == 0.0:
         plane_map={'x':0, 'y':1, 'z':2}
-        options['overhang'] = tessellation.domain_size[plane_map[options['side_plates'][0]]]
+        options['overhang'] = tessellation.domain_size[plane_map[options['side_plates'][0]]]/2
 
     mesh_geometry.create_side_elements(options['side_plates'], overhang=options['overhang'])
     side_parts = mesh_geometry.find_side_surfs(options['side_plates'])
@@ -854,11 +854,11 @@ def non_periodic_template(tessellation, model_file_name, def_gradient, rho=0.05,
 
 
     if options['sim_type'] == 'implicit':
-        keyword = BCs.non_periodic_enclosed(def_gradient, phi=phi, soft = 1)
+        keyword = BCs.non_periodic(def_gradient, phi=phi, soft = 1)
         keyword.end_key()
         keyword.write_key()
     elif options['sim_type'] == 'explicit':
-        keyword = BCs.non_periodic_enclosed(def_gradient, phi=phi, soft = 1)
+        keyword = BCs.non_periodic(def_gradient, phi=phi, soft = 1)
         keyword.end_key()
         keyword.write_key()
 ##########################################################################
