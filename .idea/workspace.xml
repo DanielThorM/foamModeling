@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="b5932416-d4b6-48b7-ba19-2e34e2fad928" name="Default" comment="">
+      <change beforePath="$PROJECT_DIR$/meshmodel.py" beforeDir="false" afterPath="$PROJECT_DIR$/meshmodel.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/modeltemplates.py" beforeDir="false" afterPath="$PROJECT_DIR$/modeltemplates.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tessellations.py" beforeDir="false" afterPath="$PROJECT_DIR$/tessellations.py" afterDir="false" />
     </list>
@@ -34,8 +35,8 @@
       <file leaf-file-name="meshmodel.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/meshmodel.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="289">
-              <caret line="342" column="33" lean-forward="true" selection-start-line="342" selection-start-column="33" selection-end-line="342" selection-end-column="33" />
+            <state relative-caret-position="238">
+              <caret line="357" column="26" lean-forward="true" selection-start-line="357" selection-start-column="26" selection-end-line="357" selection-end-column="26" />
               <folding>
                 <element signature="e#0#26#0" expanded="true" />
                 <element signature="e#777#913#0" />
@@ -49,8 +50,13 @@
                 <element signature="e#7299#7450#0" />
                 <element signature="e#8037#11058#0" />
                 <element signature="e#9808#10804#0" />
+                <element signature="e#12172#12565#0" />
+                <element signature="e#12548#12944#0" />
+                <element signature="e#12926#13315#0" />
                 <element signature="e#13463#13721#0" />
                 <element signature="e#13880#14223#0" />
+                <element signature="e#18855#19664#0" />
+                <element signature="e#19852#20298#0" />
                 <element signature="e#13274#14015#0" />
                 <element signature="e#14060#15507#0" />
                 <element signature="e#15562#16240#0" />
@@ -60,28 +66,22 @@
                 <element signature="e#24779#24902#0" />
                 <element signature="e#25060#25181#0" />
                 <element signature="e#24576#24732#0" />
+                <element signature="e#25848#26948#0" />
                 <element signature="e#26994#27344#0" />
+                <element signature="e#27394#27750#0" />
                 <element signature="e#27662#27783#0" />
                 <element signature="e#26421#26673#0" />
                 <element signature="e#26707#26993#0" />
                 <element signature="e#27035#27106#0" />
                 <element signature="e#27148#27219#0" />
                 <element signature="e#27290#28817#0" />
-                <element signature="e#29037#29960#0" />
                 <element signature="e#30082#31963#0" />
-                <element signature="e#33594#37811#0" />
                 <element signature="e#35600#36164#0" />
                 <element signature="e#36301#36881#0" />
                 <element signature="e#36953#37761#0" />
-                <element signature="e#37868#38432#0" />
                 <element signature="e#38506#39077#0" />
                 <element signature="e#39153#40439#0" />
-                <element signature="e#42330#44144#0" />
-                <element signature="e#44464#44785#0" />
-                <element signature="e#44665#45483#0" />
-                <element signature="e#47621#52093#0" />
-                <element signature="e#49331#49643#0" />
-                <element signature="e#52471#52917#0" />
+                <element signature="e#44605#46314#0" />
               </folding>
             </state>
           </provider>
@@ -90,19 +90,17 @@
       <file leaf-file-name="modeltemplates.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/modeltemplates.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="253">
-              <caret line="141" lean-forward="true" selection-start-line="141" selection-end-line="141" />
+            <state relative-caret-position="357">
+              <caret line="911" column="18" lean-forward="true" selection-start-line="911" selection-start-column="18" selection-end-line="911" selection-end-column="18" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
-                <element signature="e#384#8406#0" />
-                <element signature="e#2666#3746#0" />
+                <element signature="e#181#24777#0" />
                 <element signature="e#4920#9654#0" />
                 <element signature="e#10365#11880#0" />
-                <element signature="e#12290#14369#0" />
                 <element signature="e#14433#17255#0" />
                 <element signature="e#239#11191#0" />
+                <element signature="e#28960#40678#0" />
                 <element signature="e#29505#29936#0" />
-                <element signature="e#44399#50469#0" />
                 <element signature="e#50621#56691#0" />
               </folding>
             </state>
@@ -132,14 +130,7 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>corner_nodes[</find>
-      <find>multipl</find>
-      <find>element</find>
-      <find>corner_</find>
-      <find>divm</find>
-      <find>find_side_s</find>
       <find>_elements[elem] for surf in</find>
-      <find>find_corner</find>
       <find>plate_cor</find>
       <find>corner</find>
       <find>find_corn</find>
@@ -162,6 +153,13 @@
       <find>disp</find>
       <find>self.solids =</find>
       <find>face_core_nodes_list</find>
+      <find>find_corner</find>
+      <find>tessellation.</find>
+      <find>side_faces_list</find>
+      <find>corner_nodes(</find>
+      <find>99</find>
+      <find>plate_corner</find>
+      <find>soft=</find>
     </findStrings>
     <replaceStrings>
       <replace>.vertices</replace>
@@ -176,8 +174,8 @@
       <replace>self.mesh_geometry</replace>
       <replace>last_shell</replace>
       <replace>plate_corner_nodes</replace>
-      <replace>compare</replace>
       <replace>plate_corner_nodes[</replace>
+      <replace>compare</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -192,8 +190,8 @@
         <option value="$PROJECT_DIR$/lsdynakeyword.py" />
         <option value="$PROJECT_DIR$/lsdkeyword.py" />
         <option value="$PROJECT_DIR$/tessellations.py" />
-        <option value="$PROJECT_DIR$/meshmodel.py" />
         <option value="$PROJECT_DIR$/modeltemplates.py" />
+        <option value="$PROJECT_DIR$/meshmodel.py" />
       </list>
     </option>
   </component>
@@ -271,7 +269,7 @@
       <window_info anchor="bottom" id="Event Log" order="7" side_tool="true" />
       <window_info anchor="bottom" id="Database Changes" order="7" show_stripe_button="false" />
       <window_info anchor="bottom" id="Version Control" order="7" />
-      <window_info anchor="bottom" id="Python Console" order="7" weight="0.251634" />
+      <window_info active="true" anchor="bottom" id="Python Console" order="7" visible="true" weight="0.251634" />
       <window_info anchor="bottom" id="Run" order="2" />
       <window_info anchor="bottom" id="Terminal" order="7" />
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.20042644" />
@@ -298,7 +296,7 @@
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <option name="time" value="34" />
+      <option name="time" value="37" />
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
@@ -334,8 +332,13 @@
             <element signature="e#7299#7450#0" />
             <element signature="e#8037#11058#0" />
             <element signature="e#9808#10804#0" />
+            <element signature="e#12172#12565#0" />
+            <element signature="e#12548#12944#0" />
+            <element signature="e#12926#13315#0" />
             <element signature="e#13463#13721#0" />
             <element signature="e#13880#14223#0" />
+            <element signature="e#18855#19664#0" />
+            <element signature="e#19852#20298#0" />
             <element signature="e#13274#14015#0" />
             <element signature="e#14060#15507#0" />
             <element signature="e#15562#16240#0" />
@@ -345,28 +348,22 @@
             <element signature="e#24779#24902#0" />
             <element signature="e#25060#25181#0" />
             <element signature="e#24576#24732#0" />
+            <element signature="e#25848#26948#0" />
             <element signature="e#26994#27344#0" />
+            <element signature="e#27394#27750#0" />
             <element signature="e#27662#27783#0" />
             <element signature="e#26421#26673#0" />
             <element signature="e#26707#26993#0" />
             <element signature="e#27035#27106#0" />
             <element signature="e#27148#27219#0" />
             <element signature="e#27290#28817#0" />
-            <element signature="e#29037#29960#0" />
             <element signature="e#30082#31963#0" />
-            <element signature="e#33594#37811#0" />
             <element signature="e#35600#36164#0" />
             <element signature="e#36301#36881#0" />
             <element signature="e#36953#37761#0" />
-            <element signature="e#37868#38432#0" />
             <element signature="e#38506#39077#0" />
             <element signature="e#39153#40439#0" />
-            <element signature="e#42330#44144#0" />
-            <element signature="e#44464#44785#0" />
-            <element signature="e#44665#45483#0" />
-            <element signature="e#47621#52093#0" />
-            <element signature="e#49331#49643#0" />
-            <element signature="e#52471#52917#0" />
+            <element signature="e#44605#46314#0" />
           </folding>
         </state>
       </provider>
@@ -387,24 +384,15 @@
           <caret line="14" column="24" lean-forward="true" selection-start-line="14" selection-start-column="24" selection-end-line="14" selection-end-column="24" />
           <folding>
             <element signature="e#0#23#0" expanded="true" />
-            <element signature="e#384#8406#0" />
-            <element signature="e#2666#3746#0" />
+            <element signature="e#181#24777#0" />
             <element signature="e#4920#9654#0" />
             <element signature="e#10365#11880#0" />
-            <element signature="e#12290#14369#0" />
             <element signature="e#14433#17255#0" />
             <element signature="e#239#11191#0" />
+            <element signature="e#28960#40678#0" />
             <element signature="e#29505#29936#0" />
-            <element signature="e#44399#50469#0" />
             <element signature="e#50621#56691#0" />
           </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python37/Lib/site-packages/IPython/core/interactiveshell.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="628">
-          <caret line="3325" selection-start-line="3325" selection-end-line="3325" />
         </state>
       </provider>
     </entry>
@@ -433,10 +421,17 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python37/Lib/site-packages/IPython/core/interactiveshell.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="628">
+          <caret line="3325" selection-start-line="3325" selection-end-line="3325" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/meshmodel.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="289">
-          <caret line="342" column="33" lean-forward="true" selection-start-line="342" selection-start-column="33" selection-end-line="342" selection-end-column="33" />
+        <state relative-caret-position="238">
+          <caret line="357" column="26" lean-forward="true" selection-start-line="357" selection-start-column="26" selection-end-line="357" selection-end-column="26" />
           <folding>
             <element signature="e#0#26#0" expanded="true" />
             <element signature="e#777#913#0" />
@@ -450,8 +445,13 @@
             <element signature="e#7299#7450#0" />
             <element signature="e#8037#11058#0" />
             <element signature="e#9808#10804#0" />
+            <element signature="e#12172#12565#0" />
+            <element signature="e#12548#12944#0" />
+            <element signature="e#12926#13315#0" />
             <element signature="e#13463#13721#0" />
             <element signature="e#13880#14223#0" />
+            <element signature="e#18855#19664#0" />
+            <element signature="e#19852#20298#0" />
             <element signature="e#13274#14015#0" />
             <element signature="e#14060#15507#0" />
             <element signature="e#15562#16240#0" />
@@ -461,47 +461,39 @@
             <element signature="e#24779#24902#0" />
             <element signature="e#25060#25181#0" />
             <element signature="e#24576#24732#0" />
+            <element signature="e#25848#26948#0" />
             <element signature="e#26994#27344#0" />
+            <element signature="e#27394#27750#0" />
             <element signature="e#27662#27783#0" />
             <element signature="e#26421#26673#0" />
             <element signature="e#26707#26993#0" />
             <element signature="e#27035#27106#0" />
             <element signature="e#27148#27219#0" />
             <element signature="e#27290#28817#0" />
-            <element signature="e#29037#29960#0" />
             <element signature="e#30082#31963#0" />
-            <element signature="e#33594#37811#0" />
             <element signature="e#35600#36164#0" />
             <element signature="e#36301#36881#0" />
             <element signature="e#36953#37761#0" />
-            <element signature="e#37868#38432#0" />
             <element signature="e#38506#39077#0" />
             <element signature="e#39153#40439#0" />
-            <element signature="e#42330#44144#0" />
-            <element signature="e#44464#44785#0" />
-            <element signature="e#44665#45483#0" />
-            <element signature="e#47621#52093#0" />
-            <element signature="e#49331#49643#0" />
-            <element signature="e#52471#52917#0" />
+            <element signature="e#44605#46314#0" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/modeltemplates.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="253">
-          <caret line="141" lean-forward="true" selection-start-line="141" selection-end-line="141" />
+        <state relative-caret-position="357">
+          <caret line="911" column="18" lean-forward="true" selection-start-line="911" selection-start-column="18" selection-end-line="911" selection-end-column="18" />
           <folding>
             <element signature="e#0#23#0" expanded="true" />
-            <element signature="e#384#8406#0" />
-            <element signature="e#2666#3746#0" />
+            <element signature="e#181#24777#0" />
             <element signature="e#4920#9654#0" />
             <element signature="e#10365#11880#0" />
-            <element signature="e#12290#14369#0" />
             <element signature="e#14433#17255#0" />
             <element signature="e#239#11191#0" />
+            <element signature="e#28960#40678#0" />
             <element signature="e#29505#29936#0" />
-            <element signature="e#44399#50469#0" />
             <element signature="e#50621#56691#0" />
           </folding>
         </state>

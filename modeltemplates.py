@@ -12,13 +12,13 @@ class BoundaryConditions:#
     def __init__(self, keyword, mesh_geometry):
         self.keyword=keyword
         self.mesh_geometry = mesh_geometry
-    def non_periodic(self, def_gradient, rot_dof=0, phi=0.0, soft=1):
+    def non_periodic(self, def_gradient, rot_dof=0, phi=0.0, soft=1, surf_contact=True):
         self.keyword.comment_block('Boundary conditions')
         side_parts = [surf[0] for surf in self.mesh_geometry.find_side_surfs() if surf != []]
         side_elements = [self.mesh_geometry.shell_elements[elem].id_ for surf in side_parts for elem in self.mesh_geometry.surfs[surf].elem_ids]
-        plane_locs= [0.0, self.mesh_geometry.tessellation.domain_size[0],
-                        0.0, self.mesh_geometry.tessellation.domain_size[1],
-                        0.0, self.mesh_geometry.tessellation.domain_size[2]]
+        plane_locs= [0.0, self.mesh_geometry.domain_size[0],
+                        0.0, self.mesh_geometry.domain_size[1],
+                        0.0, self.mesh_geometry.domain_size[2]]
         planes = ['x', 'x', 'y', 'y', 'z', 'z']
         face_nodes_list = []
         i=0
@@ -102,29 +102,33 @@ class BoundaryConditions:#
                                            )* plane_combination[i][1][0])
             side_node_lists[i].extend(face_core_nodes_list[i] * plane_combination[i][2][0])
 
-        side_faces_list = self.mesh_geometry.find_parts_for_box_contact()
+
         def tiebreak_contact_node_to_surface(self, soft):
             for i, side_part in enumerate(full_side_part_list):
-                if side_part != []:
+                if side_part != [] and side_node_lists[i] != []:
                     side_part=side_part[0]
                     self.keyword.set_node_list(nsid=(i + 101), node_list=side_node_lists[i])
-                    node_list = []
-                    for face in side_faces_list[i]:
-                        for element in self.mesh_geometry.surfs[face].elem_ids:
-                            node_list.extend(self.mesh_geometry.shell_elements[element].node_ids)
-                    side_faces_nodes = list(set(node_list) - set(side_node_lists[i]))
-                    self.keyword.set_node_list(nsid=(i + 301), node_list=side_faces_nodes)
-                    self.keyword.contact_tiebreak_nodes_to_surface(cid=(i + 101), ssid=(i + 101), msid=side_part, fs=0.0,
-                                                               fd=0.0, soft=soft, ignore=1)
-                    #self.keyword.contact_force_transducer(cid=(i + 201), ssid=side_part)
-                    self.keyword.contact_automatic_nodes_to_surface(cid=(i + 301), ssid=(i + 301), msid=side_part,
-                                                                fs=0.0, fd=0.0, dc=0.0, soft=soft, ignore=1, depth=1)
+                    if surf_contact == True:
+                        node_list = []
+                        for face in side_faces_list[i]:
+                            for element in self.mesh_geometry.surfs[face].elem_ids:
+                                node_list.extend(self.mesh_geometry.shell_elements[element].node_ids)
+                        side_faces_nodes = list(set(node_list) - set(side_node_lists[i]))
+                        self.keyword.set_node_list(nsid=(i + 301), node_list=side_faces_nodes)
+                        self.keyword.contact_automatic_nodes_to_surface(cid=(i + 301), ssid=(i + 301), msid=side_part,
+                                                                        soft=soft, ignore=1,
+                                                                        depth=1)
+                    self.keyword.contact_tiebreak_nodes_to_surface(cid=(i + 101), ssid=(i + 101), msid=side_part, soft=soft, ignore=1)
+
+
 
         if phi == 1.0:
             side_node_lists = self.mesh_geometry.find_beam_node_on_side()
             side_faces_list = [[]] * 6
             tiebreak_contact_node_to_surface(self, soft)
         else:
+            if surf_contact==True:
+                side_faces_list = self.mesh_geometry.find_parts_for_box_contact()
             tiebreak_contact_node_to_surface(self, soft)
 
         if rot_dof == 1:
@@ -137,7 +141,7 @@ class BoundaryConditions:#
                                                 dofrz=0, cid=(i + 1))
         corner_nodes = self.mesh_geometry.corner_nodes
         self.def_grad_prescription(def_gradient, corner_nodes, ref_node_set= [[nid.id_] for nid in self.mesh_geometry.plate_corner_nodes])
-        self.keyword.database_hist_node(nids=self.mesh_geometry.plate_corner_nodes)
+        self.keyword.database_hist_node(nids=[node.id_ for node in self.mesh_geometry.plate_corner_nodes])
         return self.keyword
 
     def def_grad_prescription(self, def_gradient, ref_nodes, ref_node_set = None):
@@ -796,11 +800,11 @@ def non_periodic_template(tessellation, model_file_name, def_gradient, rho=0.05,
 
     if len(options['side_plates']) == 1 and options['overhang'] == 0.0:
         plane_map={'x':0, 'y':1, 'z':2}
-        options['overhang'] = tessellation.domain_size[plane_map[options['side_plates'][0]]]/2
+        options['overhang'] = mesh_geometry.tessellation.domain_size[plane_map[options['side_plates'][0]]]/2
 
     mesh_geometry.create_side_elements(options['side_plates'], overhang=options['overhang'])
     side_parts = mesh_geometry.find_side_surfs(options['side_plates'])
-    keyword.set_part_list(sid=99, pid_list=[side_part[0] for side_part in side_parts if side_part != []])
+    keyword.set_part_list(sid=99, pid_list=[side_part for side_part in side_parts if side_part != []])
     for side_part in side_parts:
         if side_part != []:
             surf = mesh_geometry.surfs[side_part[0]]
@@ -885,18 +889,18 @@ def solid_elements_template(def_gradient, model_file_name, material_data={}, dom
         'n_steps_coeff': 500,
         'run': False,
         'return_copy': False,
-        'sim_type': 'explicit',
+        'sim_type': 'implicit',
         'side_plates': ['x', 'y', 'z'],
         'overhang': 0.0,
         'dt2ms': 0.0
     }
     options.update(kwargs)
     material = {
-        'e': 1500,
+        'e': 50,
         'sigy': 25.0,
         'etan': 1.0,
         'pr': 0.3,
-        'ro': 9.2e-10,
+        'ro': 3.2e-11,
         'matfail': 2.0,
         'soften': False,
         'stress': None,
@@ -912,6 +916,9 @@ def solid_elements_template(def_gradient, model_file_name, material_data={}, dom
     material.update(material_data)
 
     mesh_geometry = mm.SolidModel(domain_size=domain_size, elem_size = elem_size)
+    if len(options['side_plates']) == 1 and options['overhang'] == 0.0:
+        plane_map={'x':0, 'y':1, 'z':2}
+        options['overhang'] = mesh_geometry.domain_size[plane_map[options['side_plates'][0]]]/2
     mesh_geometry.create_side_elements(options['side_plates'], options['overhang'])
     keyword = kw.Keyword(model_file_name)
 
@@ -975,11 +982,11 @@ def solid_elements_template(def_gradient, model_file_name, material_data={}, dom
             keyword.defineCurve(lcid=100, abscissas=mat_dict['strain'], ordinates=mat_dict['stress'])
         else:
             keyword.defineCurve(lcid=100, abscissas=material['strain'], ordinates=material['stress'])
-        keyword.mat181(mid=1, youngs=mat_dict['E'], ro=material['ro'], lcid=100)
+        keyword.mat181(mid=1, youngs=mat_dict['E']/30, ro=material['ro'], lcid=100)
 
     #keyword.mat_null(mid=2, e = material['e'])
-    keyword.mat24(mid=2, e=material['e']/30, sigy=0.0001, fail=0.0, etan=0.00001)
-    keyword.mat24(mid=3, e=material['e']*10, sigy=100000, fail=0.0, etan=1000)
+    keyword.mat24(mid=2, e=material['e']*10, sigy=0.0001, fail=0.0, etan=0.00001)
+
 
     keyword.element_solid(mesh_geometry.solid_elements)
     for solid in mesh_geometry.solids.values():
@@ -988,19 +995,20 @@ def solid_elements_template(def_gradient, model_file_name, material_data={}, dom
                              fs=material['fs'], fd=material['fd'], dc=material['dc'])
 
     keyword.element_shell_offset(mesh_geometry.shell_elements, offset=-0.05)
-    if len(options['side_plates'])>1:
-        mid = 2
-    else:
-        mid = 3
+
     for surf in mesh_geometry.surfs.values():
         keyword.section_shell(secid=surf.id_, t1=0.1, elform=options['elem_type'])
-        keyword.part_contact(pid=surf.id_, secid=surf.id_, mid=mid,
+        keyword.part_contact(pid=surf.id_, secid=surf.id_, mid=2,
                              fs=material['fs'], fd=material['fd'], dc=material['dc'])
+
+    side_parts = mesh_geometry.find_side_surfs(options['side_plates'])
+    keyword.set_part_list(sid=99, pid_list=[side_part[0] for side_part in side_parts if side_part != []])
+
     keyword.node(mesh_geometry.nodes)
     keyword.disp_type = 'vel'
     #Boundary conditions
     BCs = BoundaryConditions(keyword, mesh_geometry)
-    keyword = BCs.solid_elements_enclosed(def_gradient)
+    keyword = BCs.non_periodic(def_gradient, surf_contact=False)
     keyword.end_key()
     keyword.write_key()
 
