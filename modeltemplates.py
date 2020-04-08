@@ -8,7 +8,7 @@ import os
 import subprocess
 
 
-class BoundaryConditions(): #
+class BoundaryConditions:#
     def __init__(self, keyword, mesh_geometry):
         self.keyword=keyword
         self.mesh_geometry = mesh_geometry
@@ -56,7 +56,7 @@ class BoundaryConditions(): #
                 self.keyword.set_node_list(nsid=(i + 301), node_list=side_faces_nodes)
                 self.keyword.contact_tiebreak_nodes_to_surface(cid=(i + 101), ssid=(i + 101), msid=side_part, fs=0.0,
                                                            fd=0.0, soft=soft, ignore=1)
-                self.keyword.contact_force_transducer(cid=(i + 201), ssid=side_part)
+                #self.keyword.contact_force_transducer(cid=(i + 201), ssid=side_part)
                 self.keyword.contact_automatic_nodes_to_surface(cid=(i + 301), ssid=(i + 301), msid=side_part,
                                                             fs=0.0, fd=0.0, dc=0.0, soft=soft, ignore=1, depth=1)
 
@@ -316,6 +316,8 @@ class BoundaryConditions(): #
                 rem_nodes = set([node for node_list in face_nodes_list[:4] for node in node_list])
             face_core_nodes_list.append(list(set(face_nodes_list[i * 2]) - rem_nodes))
             face_core_nodes_list.append(list(set(face_nodes_list[(i * 2) + 1]) - rem_nodes))
+
+
 
         side_node_lists = [face_nodes_list[0], face_nodes_list[1],
                          list(set(face_nodes_list[2]) - set(face_nodes_list[0]) - set(face_nodes_list[1])),
