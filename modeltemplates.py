@@ -745,7 +745,7 @@ def non_periodic_template(tessellation, model_file_name, def_gradient, rho=0.05,
             keyword.defineCurve(lcid=100, abscissas=mat_dict['strain'], ordinates=mat_dict['stress'])
         else:
             keyword.defineCurve(lcid=100, abscissas=material['strain'], ordinates=material['stress'])
-        keyword.mat181(mid=1, youngs=mat_dict['E'], ro=material['ro'], lcid=100)
+        keyword.mat181(mid=1, youngs=mat_dict['e'], ro=material['ro'], lcid=100)
 
     #keyword.mat_null(mid=2, e = material['e'])
     keyword.mat24(mid=2, e=material['e']/30, sigy=0.0001, fail=0.0, etan=0.00001)
@@ -896,8 +896,8 @@ def solid_elements_template(def_gradient, model_file_name, material_data={}, dom
     }
     options.update(kwargs)
     material = {
-        'e': 50,
-        'sigy': 25.0,
+        'e': 100,
+        'sigy': 1.0,
         'etan': 1.0,
         'pr': 0.3,
         'ro': 3.2e-11,
@@ -985,7 +985,7 @@ def solid_elements_template(def_gradient, model_file_name, material_data={}, dom
         keyword.mat181(mid=1, youngs=mat_dict['E']/30, ro=material['ro'], lcid=100)
 
     #keyword.mat_null(mid=2, e = material['e'])
-    keyword.mat24(mid=2, e=material['e']*10, sigy=0.0001, fail=0.0, etan=0.00001)
+    keyword.mat24(mid=2, e=material['e']/10, sigy=0.0001, fail=0.0, etan=0.00001)
 
 
     keyword.element_solid(mesh_geometry.solid_elements)
@@ -1005,10 +1005,10 @@ def solid_elements_template(def_gradient, model_file_name, material_data={}, dom
     keyword.set_part_list(sid=99, pid_list=[side_part[0] for side_part in side_parts if side_part != []])
 
     keyword.node(mesh_geometry.nodes)
-    keyword.disp_type = 'vel'
+    keyword.disp_type = 'disp'
     #Boundary conditions
     BCs = BoundaryConditions(keyword, mesh_geometry)
-    keyword = BCs.non_periodic(def_gradient, surf_contact=False)
+    keyword = BCs.non_periodic(def_gradient, surf_contact=False, soft=1)
     keyword.end_key()
     keyword.write_key()
 
