@@ -1133,5 +1133,5 @@ def single_elements_template(def_gradient, model_file_name, material_data={}, do
 
 #def_gradient = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1.2]])
 os.chdir(r'H:\thesis\periodic\representative\S05R1\ID1')
-
+model_file_name = 'testKey.key'
 #periodic_template(tessellation, model_file_name, def_gradient, sim_type='implicit', strain_coeff = 0.2, strain_rate = 1e2, size_coeff = 0.5)
