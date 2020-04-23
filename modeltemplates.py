@@ -469,14 +469,14 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
         if options['elem_type']==2:
             iacc=0
         keyword.control_accuracy(osu=1, inn=2, iacc=iacc)
-        keyword.control_shell(istupd=4, psstupd=0, irnxx=-2, miter=2, nfail1=1, nfail4=1, esort=2)
+        keyword.control_shell(istupd=0, psstupd=0, irnxx=-2, miter=2, nfail1=1, nfail4=1, esort=2)
         keyword.control_implicit_solution(dctol=5e-5, ectol=5e-4)
         keyword.control_implicit_solver()
         keyword.control_implicit_dynamics()
 
     else:
         keyword.control_timestep(dt2ms=0.0, tssfac=0.9)
-        keyword.control_shell(istupd=4)
+        keyword.control_shell(istupd=0)
 
     keyword.comment_block('Database')
     keyword.database_glstat(dt=endtim / sampling_number)
