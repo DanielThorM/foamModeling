@@ -1,3 +1,4 @@
+sys.path.insert(0, r'C:\Users\danieltm\OneDrive - NTNU\Python_Github\tessToPy')
 import tessellations as ts
 import copy
 import importlib

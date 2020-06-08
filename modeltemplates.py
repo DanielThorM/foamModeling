@@ -1,6 +1,7 @@
+sys.path.insert(0, r'C:\Users\danieltm\OneDrive - NTNU\Python_Github\keywordGenerator')
 import importlib as imp
 import meshmodel as mm
-import lsdkeyword as kw
+import keywordGenerator as kw
 imp.reload(mm)
 imp.reload(kw)
 import numpy as np
