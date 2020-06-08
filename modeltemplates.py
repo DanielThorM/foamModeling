@@ -204,18 +204,20 @@ class BoundaryConditions:#
                                                              tend=time_inc, trise_frac=0.1)
 
                         if ref_node_set != None:
+                            self.keyword.boundary_prescribed_motion_set(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                        nsid=10 + 10 * i, dof=(j + 1),
+                                                                        vad=vad,
+                                                                        lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                        sf=np.sign(node_disp), birth=k * time_inc,
+                                                                        death=(k + 1) * time_inc)
+                        else:
+
                             self.keyword.boundary_prescribed_motion_node(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
                                                                          nid=node.id_, dof=(j + 1),
                                                                          vad=vad,
                                                                          lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
                                                                          sf=np.sign(node_disp), birth=k * time_inc,
                                                                          death=(k + 1) * time_inc)
-                        else:
-                            self.keyword.boundary_prescribed_motion_set(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
-                                                                    nsid=10 + 10 * i, dof=(j + 1),
-                                                                    vad=vad, lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
-                                                                    sf=np.sign(node_disp), birth=k * time_inc,
-                                                                    death=(k + 1) * time_inc)
     ##################################################################################3
     #Periodic
     ##################################################################################################################
