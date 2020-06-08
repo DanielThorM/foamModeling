@@ -1,9 +1,11 @@
-sys.path.insert(0, r'C:\Users\danieltm\OneDrive - NTNU\Python_Github\keywordGenerator')
+#sys.path.insert(0, r'C:\Users\danieltm\OneDrive - NTNU\Python_Github\keywordGenerator')
+#sys.path.insert(0, r'C:\Users\danieltm\OneDrive - NTNU\Python_Github\tessToPy')
 import importlib as imp
-import meshmodel as mm
-import keywordGenerator as kw
-imp.reload(mm)
-imp.reload(kw)
+#import tessellations as ts
+#import meshmodel as mm
+#import keywordGenerator as kw
+#imp.reload(mm)
+#imp.reload(kw)
 import numpy as np
 import os
 import subprocess

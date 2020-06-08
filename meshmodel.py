@@ -1,5 +1,3 @@
-sys.path.insert(0, r'C:\Users\danieltm\OneDrive - NTNU\Python_Github\tessToPy')
-import tessellations as ts
 import copy
 import importlib
 from collections import namedtuple
@@ -19,6 +17,7 @@ import math
 #tessellation  = ts.Tessellation(folderName + r'\\nfrom_morpho-id1.tess')
 #tessellation .mesh_file_name=mesh_file_name
 #tessellation .mesh2D(elem_size=0.02)
+
 def compare_arrays(arr0, arr1, rel_tol=1e-07, abs_tol=0.0):
     return all([math.isclose(a, b, rel_tol=rel_tol, abs_tol=abs_tol) for a, b in zip(arr0, arr1)])
 
