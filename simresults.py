@@ -125,6 +125,8 @@ def readspcforc(sim_folder):
         lines = spcforc.readlines()
     output_time_data = np.array(
         [[i, float(line.split()[-1])] for i, line in enumerate(lines) if 'output at time' in line])
+    if len(output_time_data) == 0:
+        return []
     timestamps = output_time_data[:, 1]
     output_time_ind = output_time_data[:, 0]
 
@@ -143,6 +145,8 @@ def readbndout(sim_folder):
 
     output_time_data = np.array(
         [[i, float(line.split()[-1])] for i, line in enumerate(lines) if r' t= ' in line])
+    if len(output_time_data) == 0:
+        return []
     timestamps = output_time_data[:, 1]
     output_time_ind = output_time_data[:, 0]
     numnodes = int((output_time_ind[1] - output_time_ind[0]) - 6)
@@ -170,6 +174,8 @@ def readglstat(sim_folder):
 
     output_time_data = np.array(
         [[i, float(line.split()[-1])] for i, line in enumerate(lines) if 'time......' in line])
+    if len(output_time_data) == 0:
+        return []
     timestamps = output_time_data[:, 1]
     output_time_ind = output_time_data[:, 0]
     value_ind = output_time_ind
@@ -192,6 +198,8 @@ def readnodout(sim_folder):
 
     output_time_data = np.array(
         [[i, float(line.split()[-2])] for i, line in enumerate(lines) if 'at time' in line][::2])
+    if len(output_time_data) == 0:
+        return []
     timestamps = output_time_data[:, 1]
     output_time_ind = output_time_data[:, 0]
     numnodes = int((output_time_ind[1] - output_time_ind[0]) / 2 - 6)
