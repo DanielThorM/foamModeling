@@ -13,6 +13,7 @@ class SimResults(object):
             self.spcforc = readspcforc(sim_folder)
         if 'nodout' in file_list:
             self.nodout = readnodout(sim_folder)
+            self.time=list(self.nodout.values())[0].time
         if 'bndout' in file_list:
             self.bndout = readbndout(sim_folder)
         if 'glstat' in file_list:
@@ -24,6 +25,33 @@ class SimResults(object):
         if 'nodfor' in file_list:
             self.nodfor = readnodfor(sim_folder)
 
+        self.dX_ref = None
+
+    def PK1(self, source='bndout'):
+        if source == 'bndout':
+            time=list(self.bndout.values())[0].time
+            traction = traction_bndout(self.bndout, node_order_cube(self.nodout))
+
+        elif source == 'rcforc':
+            time = list(self.rcforc.values())[0].time
+            traction = traction_rcforc(self.rcforc, node_order_cube(self.nodout))
+
+        PK1 = traction / self.A0()
+        PK1_interp = scipy.interpolate.interp1d(time, PK1, axis=0)
+        return PK1_interp(self.time)
+
+    def F(self):
+        F_interp, _ = def_gradient(self.nodout)
+        return F_interp(self.time)
+
+    def inf_strain(self):
+        F_temp=self.F()
+        return 0.5*(np.transpose(F_temp, (0, 2, 1))+F_temp)-np.identity(3)
+
+    def A0(self):
+        F_interp, dX = def_gradient(self.nodout, dX_ref=self.dX_ref)
+        A0 = area(F_interp(0.0), dX)
+        return A0
     # os.chdir(workingFolder)
 
 def readrwforc(sim_folder):
@@ -126,11 +154,11 @@ def readbndout(sim_folder):
             nid = int(line.split()[1])
             values = [nid] + [float(force) for force in line.split()[3:8:2]]
             node_values[i].append(values)
-    bnd_dict = {}
+    bndout_dict = {}
     for j in range(numnodes):
         values = np.array(node_values[j])
-        bnd_dict[int(values[0, 0])] = bnd_tup(timestamps, values[:, 1:4])
-    return bnd_dict#, node_order
+        bndout_dict[int(values[0, 0])] = bnd_tup(timestamps, values[:, 1:4])
+    return bndout_dict#, node_order
 
 def readglstat(sim_folder):
     '''Reads timestamps and resultant forces on bnd file
@@ -223,7 +251,7 @@ def readnodfor(sim_folder):
 
 def node_order_cube(nodout_dict):
     '''Z-axis point up, second node along x-axis'''
-    corner_nodes = [0]*8
+    corner_nodes = list(range(8))
     loc_bools = [[True, True, True],
                          [False, True, True],
                          [False, False, True],
@@ -238,9 +266,12 @@ def node_order_cube(nodout_dict):
                 corner_nodes[ind] = node[0]
     return corner_nodes
 
-def def_gradient(nodout_dict):
+def def_gradient(nodout_dict, dX_ref=None):
     node_order=node_order_cube(nodout_dict)
     dX = np.array([nodout_dict[node].A[0] for node in node_order])
+    if dX_ref != None:
+        dX.astype(bool).astype(int)
+        dX=dX*dX_ref
     # deformed vectors
     dx = np.array([nodout_dict[node].A for node in node_order]).swapaxes(0, 1)
     time = nodout_dict[node_order[0]].time
@@ -250,127 +281,68 @@ def def_gradient(nodout_dict):
     F_interp = scipy.interpolate.interp1d(time, F_, axis=0, fill_value='extrapolate')
     return F_interp, dX
 
+def area(F, dX):
+    dx=[np.dot(dX_inst, F) for dX_inst in dX]
+    A_temp=[]
+    for inds in [[7, 0, 4, 3],[5, 0, 4, 1],[2,0,3,1]]:
+        A_temp.append(np.linalg.norm(np.cross(dx[inds[0]] - dx[inds[1]], dx[inds[2]] - dx[inds[3]])) / 2)
+    A = np.array([A_temp]*3)
+    return A
 
-def stressP(self, source='bndout'):
-    bndDict, nodeOrderOut = self.readbndout()
-    nodeDict = self.readnodout()
-    nodeOrder=self.findNodeOrder(nodeOrderOut,nodeDict)
-    dX = np.array([[nodeDict[node].x[0], nodeDict[node].y[0], nodeDict[node].z[0]] for node in nodeOrder])
-    # deformed vectors
-    dx = np.array([[nodeDict[node].x, nodeDict[node].y, nodeDict[node].z] for node in nodeOrder]).swapaxes(0,1).swapaxes(0, 2)
-    dxtime = nodeDict[nodeOrder[0]].time
-    dxInterp = interp1d(dxtime, dx, axis=0, fill_value='extrapolate')
+def traction_bndout(bndout, node_order=None):
+    bndout_list=list(bndout.values())
+    if node_order != None:
+        bndout_list = [bndout[ind] for ind in node_order]
+    face_ind_order=[[[1,2,5,6], [0, 3, 4, 7]],
+               [[2,3,6,7], [0, 1, 4, 5]],
+               [[4, 5, 6, 7], [0, 1, 2, 3]]]
+    R = list(range(9))
+    for i in range(3):
+        for j, jinds in enumerate(face_ind_order):
+            pos_sum =np.sum([bndout_list[ind].F[:,i] for ind in jinds[1]], axis=0)
+            neg_sum =np.sum([bndout_list[ind].F[:,i] for ind in jinds[0]], axis=0)
+            R[i * 3 + j] = (pos_sum-neg_sum) / 2.
 
-    # solving linear system for all timesteps
-    Ftime = nodeDict[nodeOrder[0]].time
-    Forg = np.array([np.dot(dxTemp[5:].T, np.linalg.inv(dX[5:].T)) for dxTemp in dx])
-    Finterp = interp1d(Ftime, Forg, axis=0, fill_value='extrapolate')
+    R=np.array(R).reshape(3,3,-1).swapaxes(0,2)
+    traction = -1 * R
+    return traction
 
+def traction_rcforc(rcforc, ftorder=None):
+        '''order: X0, X1, Y0, Y1, Z0, Z1
+        NOT TESTED'''
+        rcforc_list=list(rcforc.values())
+        if ftorder != None:
+            rcforc_list=[rcforc[ind] for ind in ftorder]
+        R=list(range(9))
+        for i in range(3):
+            for j, jinds in enumerate([[1, 0],[3, 2],[5, 4]]):
+                R[i*3+j] = (rcforc_list[jinds[0]].R[:,i] - rcforc_list[jinds[1]].R[:,i]) / 2.
 
+        R = np.array(R).reshape(3, 3, -1).swapaxes(0, 2)
+        traction = -1 * R
+        return traction
+        #Rxx = (rcforc[1].Rx - rcforc[0].Rx) / 2.
+        #Rxy = (rcforc[1].Ry - rcforc[0].Ry) / 2.
+        #Rxz = (rcforc[1].Rz - rcforc[0].Rz) / 2.
 
-    #
-    #overallTime = np.insert(bndDict[nodeOrder[0]].time, 0, 0.0)
-    #detF = np.linalg.det(F)
-    if source == 'rcforc':
-        rcforc=self.readrcforc()
-        F = Finterp(rcforc[0].time)
-        self.F=F
+        #Ryx = (rcforc[3].Rx - rcforc[2].Rx) / 2.
+        #Ryy = (rcforc[3].Ry - rcforc[2].Ry) / 2.
+        #Ryz = (rcforc[3].Rz - rcforc[2].Rz) / 2.
 
-        Ax = np.linalg.norm(np.cross(dX[7] - dX[0], dX[4] - dX[3]))/2
-        Ay = np.linalg.norm(np.cross(dX[5] - dX[0], dX[4] - dX[1]))/2
-        Az = np.linalg.norm(np.cross(dX[2] - dX[0], dX[3] - dX[1]))/2
-        A0 = np.array([[Ax, Ay, Az],
-                       [Ax, Ay, Az],
-                       [Ax, Ay, Az]])
-
-        Rxx = (rcforc[1].Rx - rcforc[0].Rx) / 2.
-        Rxy = (rcforc[1].Ry - rcforc[0].Ry) / 2.
-        Rxz = (rcforc[1].Rz - rcforc[0].Rz) / 2.
-
-        Ryx = (rcforc[3].Rx - rcforc[2].Rx) / 2.
-        Ryy = (rcforc[3].Ry - rcforc[2].Ry) / 2.
-        Ryz = (rcforc[3].Rz - rcforc[2].Rz) / 2.
-
-        Rzx = (rcforc[5].Rx - rcforc[4].Rx) / 2.
-        Rzy = (rcforc[5].Ry - rcforc[4].Ry) / 2.
-        Rzz = (rcforc[5].Rz - rcforc[4].Rz) / 2.
+        #Rzx = (rcforc[5].Rx - rcforc[4].Rx) / 2.
+        #Rzy = (rcforc[5].Ry - rcforc[4].Ry) / 2.
+        #Rzz = (rcforc[5].Rz - rcforc[4].Rz) / 2.
 
         #forceP=-1*np.array([[Rxx, Rxy, Rxz],
          #                   [Ryx, Ryy, Ryz],
           #                  [Rzx, Rzy, Rzz]]).swapaxes(0, 1).swapaxes(0, 2)
 
         #df= P N ds
-        forceP = -1 * np.array([[Rxx, Ryx, Rzx],
-                                [Rxy, Ryy, Rzy],
-                                [Rxz, Ryz, Rzz]]).swapaxes(0, 1).swapaxes(0, 2)
-
-        self.A0=A0
-        P=forceP/A0
-        self.P=P
-
-    elif source =='bndout':
-        F = Finterp(bndDict[nodeOrder[0]].time)
-        self.F=F
-        PXX = (bndDict[nodeOrder[1]].Fx + bndDict[nodeOrder[2]].Fx + bndDict[nodeOrder[5]].Fx +
-                             bndDict[nodeOrder[6]].Fx)
-        PXX0 = (bndDict[nodeOrder[0]].Fx + bndDict[nodeOrder[3]].Fx + bndDict[nodeOrder[4]].Fx +
-                              bndDict[nodeOrder[7]].Fx)
-        PYY = (bndDict[nodeOrder[2]].Fy + bndDict[nodeOrder[3]].Fy + bndDict[nodeOrder[6]].Fy +
-                             bndDict[nodeOrder[7]].Fy)
-        PYY0 = (bndDict[nodeOrder[0]].Fy + bndDict[nodeOrder[1]].Fy + bndDict[nodeOrder[4]].Fy +
-                              bndDict[nodeOrder[5]].Fy)
-        PZZ = (bndDict[nodeOrder[4]].Fz + bndDict[nodeOrder[5]].Fz + bndDict[nodeOrder[6]].Fz +
-                             bndDict[nodeOrder[7]].Fz)
-        PZZ0 = (bndDict[nodeOrder[0]].Fz + bndDict[nodeOrder[1]].Fz + bndDict[nodeOrder[2]].Fz +
-                              bndDict[nodeOrder[3]].Fz)
-        PXY = (bndDict[nodeOrder[1]].Fy + bndDict[nodeOrder[2]].Fy + bndDict[nodeOrder[5]].Fy +
-                             bndDict[nodeOrder[6]].Fy)
-        PXY0 = (bndDict[nodeOrder[0]].Fy + bndDict[nodeOrder[3]].Fy + bndDict[nodeOrder[4]].Fy +
-                              bndDict[nodeOrder[7]].Fy)
-        PYX = (bndDict[nodeOrder[2]].Fx + bndDict[nodeOrder[3]].Fx + bndDict[nodeOrder[6]].Fx +
-                             bndDict[nodeOrder[7]].Fx)
-        PYX0 = (bndDict[nodeOrder[0]].Fx + bndDict[nodeOrder[1]].Fx + bndDict[nodeOrder[4]].Fx +
-                              bndDict[nodeOrder[5]].Fx)
-        PZX = (bndDict[nodeOrder[4]].Fx + bndDict[nodeOrder[5]].Fx + bndDict[nodeOrder[6]].Fx +
-                             bndDict[nodeOrder[7]].Fx)
-        PZX0 = (bndDict[nodeOrder[0]].Fx + bndDict[nodeOrder[1]].Fx + bndDict[nodeOrder[2]].Fx +
-                              bndDict[nodeOrder[3]].Fx)
-        PXZ = (bndDict[nodeOrder[1]].Fz + bndDict[nodeOrder[2]].Fz + bndDict[nodeOrder[5]].Fz +
-                             bndDict[nodeOrder[6]].Fz)
-        PXZ0 = (bndDict[nodeOrder[0]].Fz + bndDict[nodeOrder[3]].Fz + bndDict[nodeOrder[4]].Fz +
-                              bndDict[nodeOrder[7]].Fz)
-        PZY = (bndDict[nodeOrder[4]].Fy + bndDict[nodeOrder[5]].Fy + bndDict[nodeOrder[6]].Fy +
-                             bndDict[nodeOrder[7]].Fy)
-        PZY0 = (bndDict[nodeOrder[0]].Fy + bndDict[nodeOrder[1]].Fy + bndDict[nodeOrder[2]].Fy +
-                              bndDict[nodeOrder[3]].Fy)
-        PYZ = (bndDict[nodeOrder[2]].Fz + bndDict[nodeOrder[3]].Fz + bndDict[nodeOrder[6]].Fz +
-                             bndDict[nodeOrder[7]].Fz)
-        PYZ0 = (bndDict[nodeOrder[0]].Fz + bndDict[nodeOrder[1]].Fz + bndDict[nodeOrder[4]].Fz +
-                              bndDict[nodeOrder[5]].Fz)
-
-        #P = np.array([      [PXX, PYX, PXZ],
-        #                    [PYX, PYY, PYZ],
-        #                    [PZX, PZY, PZZ]]).swapaxes(0, 1).swapaxes(0, 2)
-        P = np.array([[PXX, PYX, PZX],
-                      [PXY, PYY, PZY],
-                      [PXZ, PYZ, PZZ]]).swapaxes(0, 1).swapaxes(0, 2)
-
-        #P0 = np.array([[-PXX0, -PYX0, -PZX0],
-        #                     [-PXY0, -PYY0, -PZY0],
-        #                     [-PXZ0, -PYZ0, -PZZ0]]).swapaxes(0, 1).swapaxes(0, 2)
-        Ax = np.linalg.norm(np.cross(dX[7] - dX[0], dX[4] - dX[3])) / 2
-        Ay = np.linalg.norm(np.cross(dX[5] - dX[0], dX[4] - dX[1])) / 2
-        Az = np.linalg.norm(np.cross(dX[2] - dX[0], dX[3] - dX[1])) / 2
-        A0 = np.array([[Ax, Ay, Az],
-                       [Ax, Ay, Az],
-                       [Ax, Ay, Az]])
-
-        self.P = P/A0
-        #return F, P
+        #forceP = -1 * np.array([[Rxx, Ryx, Rzx],
+                                #[Rxy, Ryy, Rzy],
+                                #[Rxz, Ryz, Rzz]]).swapaxes(0, 1).swapaxes(0, 2)
 
 
-    else:
-        raise Exception('{} was not recognised as source'.format(source))
 
 def gasContr(self, relativeDensity):
     #P1V1/T1= P2V2/T2
