@@ -357,8 +357,7 @@ class BoundaryConditions:#
     def solid_element_single(self, def_gradient):
         corner_nodes = self.mesh_geometry.corner_nodes
         self.def_grad_prescription(def_gradient, corner_nodes)
-        self.keyword.set_node_list(nsid=99, node_list=[node.id_ for node in corner_nodes])
-        self.keyword.database_hist_node_set(nsids=[99])
+        self.keyword.database_hist_nodes(nids=[node.id_ for node in corner_nodes])
         return self.keyword
 
     def solid_elements_enclosed(self, def_gradient, rot_dof=0, soft=1):

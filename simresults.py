@@ -176,11 +176,11 @@ def readnodout(sim_folder):
             line = line[10:].replace('\n', '')
             values = [nid] + list(map(float, map(''.join, zip(*[iter(line)] * 12))))
             node_values[i].append(values)
-    node_dict = {}
+    nodout_dict = {}
     for i in range(numnodes):
         values = np.array(node_values[i])
-        node_dict[int(values[0, 0])] = nod_tup(timestamps, values[:, 1:4], values[:, 4:7], values[:, 10:13])
-    return node_dict
+        nodout_dict[int(values[0, 0])] = nod_tup(timestamps, values[:, 1:4], values[:, 4:7], values[:, 10:13])
+    return nodout_dict
 
 def readnodfor(sim_folder):
     '''Reads timestamps and resultant forces on nodfor file
