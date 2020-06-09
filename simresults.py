@@ -1,7 +1,7 @@
 import os
 from collections import namedtuple
 import numpy as np
-import scipy as sp
+import scipy.interpolate
 
 class SimResults(object):
     def __init__(self, sim_folder):
@@ -223,40 +223,33 @@ def readnodfor(sim_folder):
 
 def node_order_cube(nodout_dict):
     '''Z-axis point up, second node along x-axis'''
-    corner_nodes = [0] * 8
-    for node in nodout_dict.values():
-        if node.x[0] == 0.0 and node.y[0] == 0.0 and node.z[0] == 0.0:
-            corner_nodes[0] = node.nid
-        elif node.x[0] != 0.0 and node.y[0] == 0.0 and node.z[0] == 0.0:
-            corner_nodes[1] = node.nid
-        elif node.x[0] != 0.0 and node.y[0] != 0.0 and node.z[0] == 0.0:
-            corner_nodes[2] = node.nid
-        elif node.x[0] == 0.0 and node.y[0] != 0.0 and node.z[0] == 0.0:
-            corner_nodes[3] = node.nid
-        elif node.x[0] == 0.0 and node.y[0] == 0.0 and node.z[0] != 0.0:
-            corner_nodes[4] = node.nid
-        elif node.x[0] != 0.0 and node.y[0] == 0.0 and node.z[0] != 0.0:
-            corner_nodes[5] = node.nid
-        elif node.x[0] != 0.0 and node.y[0] != 0.0 and node.z[0] != 0.0:
-            corner_nodes[6] = node.nid
-        elif node.x[0] == 0.0 and node.y[0] != 0.0 and node.z[0] != 0.0:
-            corner_nodes[7] = node.nid
+    corner_nodes = [0]*8
+    loc_bools = [[True, True, True],
+                         [False, True, True],
+                         [False, False, True],
+                         [True, False, True],
+                         [True, True, False],
+                         [False, True, False],
+                         [False, False, False],
+                         [True, False, False]]
+    for node in nodout_dict.items():
+        for ind, loc_bool in enumerate(loc_bools):
+            if all((node[1].A[0] == [0, 0, 0]) == loc_bool):
+                corner_nodes[ind] = node[0]
     return corner_nodes
 
 def def_gradient(nodout_dict):
     node_order=node_order_cube(nodout_dict)
-    dX = np.array([[nodout_dict[node].x[0], nodout_dict[node].y[0], nodout_dict[node].z[0]] for node in node_order])
+    dX = np.array([nodout_dict[node].A[0] for node in node_order])
     # deformed vectors
-    dx = np.array([[nodout_dict[node].x, nodout_dict[node].y, nodout_dict[node].z] for node in node_order]).swapaxes(0,
-                                                                                                           1).swapaxes(
-        0, 2)
-    dxtime = nodout_dict[nodeOrder[0]].time
-    dxInterp = np.interp1d(dxtime, dx, axis=0, fill_value='extrapolate')
-
+    dx = np.array([nodout_dict[node].A for node in node_order]).swapaxes(0, 1)
+    time = nodout_dict[node_order[0]].time
+    #dx_interp = scipy.interpolate.interpolate.interp1d(time, dx, axis=0, fill_value='extrapolate')
     # solving linear system for all timesteps
-    Ftime = nodout_dict[nodeOrder[0]].time
-    Forg = np.array([np.dot(dxTemp[5:].T, np.linalg.inv(dX[5:].T)) for dxTemp in dx])
-    Finterp = sp.interpolate.interp1d(Ftime, Forg, axis=0, fill_value='extrapolate')
+    F_ = np.array([np.dot(dx_[5:].T, np.linalg.inv(dX[5:].T)) for dx_ in dx])
+    F_interp = scipy.interpolate.interp1d(time, F_, axis=0, fill_value='extrapolate')
+    return F_interp, dX
+
 
 def stressP(self, source='bndout'):
     bndDict, nodeOrderOut = self.readbndout()
