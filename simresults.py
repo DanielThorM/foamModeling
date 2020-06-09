@@ -216,26 +216,42 @@ def readnodfor(sim_folder):
                                    force_values[:, i, 3]))
     return force_list
 
-def findNodeOrder(self, nodeOrderOut, nodeDict):
-    cornerNodes = [0] * 8
-    for node in nodeDict.values():
+def node_order_cube(nodout_dict):
+    '''Z-axis point up, second node along x-axis'''
+    corner_nodes = [0] * 8
+    for node in nodout_dict.values():
         if node.x[0] == 0.0 and node.y[0] == 0.0 and node.z[0] == 0.0:
-            cornerNodes[0] = node.nid
+            corner_nodes[0] = node.nid
         elif node.x[0] != 0.0 and node.y[0] == 0.0 and node.z[0] == 0.0:
-            cornerNodes[1] = node.nid
+            corner_nodes[1] = node.nid
         elif node.x[0] != 0.0 and node.y[0] != 0.0 and node.z[0] == 0.0:
-            cornerNodes[2] = node.nid
+            corner_nodes[2] = node.nid
         elif node.x[0] == 0.0 and node.y[0] != 0.0 and node.z[0] == 0.0:
-            cornerNodes[3] = node.nid
+            corner_nodes[3] = node.nid
         elif node.x[0] == 0.0 and node.y[0] == 0.0 and node.z[0] != 0.0:
-            cornerNodes[4] = node.nid
+            corner_nodes[4] = node.nid
         elif node.x[0] != 0.0 and node.y[0] == 0.0 and node.z[0] != 0.0:
-            cornerNodes[5] = node.nid
+            corner_nodes[5] = node.nid
         elif node.x[0] != 0.0 and node.y[0] != 0.0 and node.z[0] != 0.0:
-            cornerNodes[6] = node.nid
+            corner_nodes[6] = node.nid
         elif node.x[0] == 0.0 and node.y[0] != 0.0 and node.z[0] != 0.0:
-            cornerNodes[7] = node.nid
-    return cornerNodes
+            corner_nodes[7] = node.nid
+    return corner_nodes
+
+def def_gradient(nodout_dict):
+    node_order=node_order_cube(nodout_dict)
+    dX = np.array([[nodout_dict[node].x[0], nodout_dict[node].y[0], nodout_dict[node].z[0]] for node in node_order])
+    # deformed vectors
+    dx = np.array([[nodout_dict[node].x, nodout_dict[node].y, nodout_dict[node].z] for node in node_order]).swapaxes(0,
+                                                                                                           1).swapaxes(
+        0, 2)
+    dxtime = nodout_dict[nodeOrder[0]].time
+    dxInterp = np.interp1d(dxtime, dx, axis=0, fill_value='extrapolate')
+
+    # solving linear system for all timesteps
+    Ftime = nodout_dict[nodeOrder[0]].time
+    Forg = np.array([np.dot(dxTemp[5:].T, np.linalg.inv(dX[5:].T)) for dxTemp in dx])
+    Finterp = sp.interpolate.interp1d(Ftime, Forg, axis=0, fill_value='extrapolate')
 
 def stressP(self, source='bndout'):
     bndDict, nodeOrderOut = self.readbndout()

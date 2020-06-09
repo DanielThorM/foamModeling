@@ -16,7 +16,7 @@
       <file leaf-file-name="meshmodel.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/meshmodel.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="68">
+            <state relative-caret-position="-85">
               <caret line="4" column="11" lean-forward="true" selection-start-line="4" selection-start-column="11" selection-end-line="4" selection-end-column="11" />
               <folding>
                 <element signature="e#1#12#0" expanded="true" />
@@ -37,21 +37,17 @@
       <file leaf-file-name="simresults.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/simresults.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="391">
-              <caret line="237" column="22" lean-forward="true" selection-start-line="237" selection-start-column="22" selection-end-line="237" selection-end-column="22" />
+            <state relative-caret-position="323">
+              <caret line="40" column="44" lean-forward="true" selection-start-line="40" selection-start-column="44" selection-end-line="40" selection-end-column="44" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
                 <element signature="e#95#645#0" />
-                <element signature="e#935#1966#0" />
                 <element signature="e#2005#2934#0" />
                 <element signature="e#2670#3651#0" />
                 <element signature="e#3676#4424#0" />
-                <element signature="e#4837#6013#0" />
                 <element signature="e#5638#6530#0" />
                 <element signature="e#7054#8338#0" />
                 <element signature="e#8372#9674#0" />
-                <element signature="e#9499#10464#0" />
-                <element signature="e#10506#16447#0" />
                 <element signature="e#17382#17620#0" />
                 <element signature="e#16765#16871#0" />
               </folding>
@@ -129,6 +125,7 @@
       <replace>compare</replace>
       <replace>']))</replace>
       <replace>', '</replace>
+      <replace>nodout_dict</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -250,7 +247,7 @@
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <option name="time" value="42" />
+      <option name="time" value="43" />
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
@@ -509,7 +506,7 @@
     <entry file="file://$PROJECT_DIR$/tessellations.py" />
     <entry file="file://$PROJECT_DIR$/meshmodel.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="68">
+        <state relative-caret-position="-85">
           <caret line="4" column="11" lean-forward="true" selection-start-line="4" selection-start-column="11" selection-end-line="4" selection-end-column="11" />
           <folding>
             <element signature="e#1#12#0" expanded="true" />
@@ -548,21 +545,17 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/simresults.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="391">
-          <caret line="237" column="22" lean-forward="true" selection-start-line="237" selection-start-column="22" selection-end-line="237" selection-end-column="22" />
+        <state relative-caret-position="323">
+          <caret line="40" column="44" lean-forward="true" selection-start-line="40" selection-start-column="44" selection-end-line="40" selection-end-column="44" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
             <element signature="e#95#645#0" />
-            <element signature="e#935#1966#0" />
             <element signature="e#2005#2934#0" />
             <element signature="e#2670#3651#0" />
             <element signature="e#3676#4424#0" />
-            <element signature="e#4837#6013#0" />
             <element signature="e#5638#6530#0" />
             <element signature="e#7054#8338#0" />
             <element signature="e#8372#9674#0" />
-            <element signature="e#9499#10464#0" />
-            <element signature="e#10506#16447#0" />
             <element signature="e#17382#17620#0" />
             <element signature="e#16765#16871#0" />
           </folding>
