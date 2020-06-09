@@ -28,8 +28,9 @@ class SimResults(object):
 
 def readrwforc(sim_folder):
     '''Reads timestamps and resultant forces on rwforc file
-    returns dict with each wall in tuple [t, x,y,z]'''
-    rw_tup = namedtuple('rwforc', ['time', 'Rx', 'Ry', 'Rz'])
+    returns dict with each wall in tuple [t, R_xyz)]
+    NOT TESTED'''
+    rw_tup = namedtuple('rwforc', ['time', 'R'])
     with open(r'{}\rwforc'.format(sim_folder)) as rwforc:
         lines = rwforc.readlines()
     data_start = [index for index, line in enumerate(lines) if 'time       wall#' in line][0] + 1
@@ -40,14 +41,14 @@ def readrwforc(sim_folder):
     wall_dict = {}
     for wall_id in set(formated_data[:, 1]):
         wall_index = np.where(formated_data[:, 1] == wall_id)
-        wall_dict[int(wall_id)] = rw_tup(formated_data[wall_index, 0][0], formated_data[wall_index, 3][0],
-                                      formated_data[wall_index, 4][0], formated_data[wall_index, 5][0])
+        wall_dict[int(wall_id)] = rw_tup(formated_data[wall_index, 0][0], np.array([formated_data[wall_index, 3][0],
+                                      formated_data[wall_index, 4][0], formated_data[wall_index, 5][0]]))
     return wall_dict
 
 def readrcforc(sim_folder):
     '''Reads timestamps and resultant forces on rcforc file
-    returns dict of reaction forces with tuple [t, Rx, Ry, Rz]'''
-    rc_tup = namedtuple('rcforc', ['time', 'Rx', 'Ry', 'Rz'])
+    returns dict of reaction forces with tuple [t, R_xyz]'''
+    rc_tup = namedtuple('rcforc', ['time', 'R'])
     with open(r'{}\rcforc'.format(sim_folder)) as rcforc:
         lines = rcforc.readlines()
 
@@ -67,13 +68,13 @@ def readrcforc(sim_folder):
                     RY.append(float(temp[7]))
                     RZ.append(float(temp[9]))
 
-        resultant_dict[ftid] =rc_tup(np.array(time), np.array(RX), np.array(RY), np.array(RZ))
+        resultant_dict[ftid] =rc_tup(np.array(time), np.array([RX, RY, RZ]))
     return resultant_dict
 
 def readrbdout(sim_folder):
     '''Reads timestamps and resultant forces on rwforc file
     returns [t, x,y,z]'''
-    rwTup = namedtuple('rbdoutTup', ['time', 'Rx', 'Ry', 'Rz'])
+    rwTup = namedtuple('rbdoutTup', ['time', 'R'])
     with open(r'{}\rbdout'.format(sim_folder)) as rwforc:
         lines = rwforc.readlines()
     dataStart = [index for index, line in enumerate(lines) if 'time       wall#' in line][0] + 1
@@ -84,15 +85,14 @@ def readrbdout(sim_folder):
     wallDict = {}
     for wallID in set(formatedData[:, 1]):
         wallIndex = np.where(formatedData[:, 1] == wallID)
-        wallDict[int(wallID)] = rwTup(formatedData[wallIndex, 0], formatedData[wallIndex, 3],
-                                      formatedData[wallIndex, 4], formatedData[wallIndex, 5])
+        wallDict[int(wallID)] = rwTup(formatedData[wallIndex, 0], formatedData[wallIndex, 3:6])
     return wallDict
 
 def readspcforc(sim_folder):
     '''Reads timestamps and resultant forces on spc file
     returns [t],[x,y,z]'''
     #Filter by heading? Not tried
-    spcforc_tup = namedtuple('spcTup', ['time', 'Rx', 'Ry', 'Rz'])
+    spcforc_tup = namedtuple('spcTup', ['time', 'R'])
     with open(r'{}\spcforc'.format(sim_folder)) as spcforc:
         lines = spcforc.readlines()
     output_time_data = np.array(
@@ -104,12 +104,12 @@ def readspcforc(sim_folder):
 
     force_resultant = np.array([[float(item) for item in lines[int(ind)].split()[-3:]] for ind in force_resultant_ind])
 
-    return spcforc_tup(timestamps, force_resultant[:, 0], force_resultant[:, 1], force_resultant[:, 2])
+    return spcforc_tup(timestamps, force_resultant[:, 0:3])
 
 def readbndout(sim_folder):
     '''Reads timestamps and resultant forces on bnd file
-    returns [t],[x,y,z]'''
-    bnd_tup = namedtuple('bndTup', ['nid', 'time', 'Fx', 'Fy', 'Fz'])
+    returns [t],F_xyz'''
+    bnd_tup = namedtuple('bndTup', ['time', 'F'])
     with open(r'{}\bndout'.format(sim_folder)) as bndout:
         lines = bndout.readlines()
 
@@ -127,11 +127,9 @@ def readbndout(sim_folder):
             values = [nid] + [float(force) for force in line.split()[3:8:2]]
             node_values[i].append(values)
     bnd_dict = {}
-    node_order = []
     for j in range(numnodes):
         values = np.array(node_values[j])
-        node_order.append(int(values[0, 0]))
-        bnd_dict[int(values[0, 0])] = bnd_tup(int(values[0, 0]), timestamps, *[values[:, i] for i in range(1, 4)])
+        bnd_dict[int(values[0, 0])] = bnd_tup(timestamps, values[:, 1:4])
     return bnd_dict#, node_order
 
 def readglstat(sim_folder):
@@ -160,7 +158,7 @@ def readglstat(sim_folder):
 def readnodout(sim_folder):
     '''Reads timestamps and resultant forces on nodoutfile
     returns [t],[x,y,z]'''
-    nod_tup = namedtuple('nodTup', ['nid', 'time', 'Dx', 'Dy', 'Dz', 'Vx', 'Vy', 'Vz', 'x', 'y', 'z'])
+    nod_tup = namedtuple('nodTup', ['time', 'D', 'V', 'A'])
     with open(r'{}\nodout'.format(sim_folder)) as nodout:
         lines = nodout.readlines()
 
@@ -181,14 +179,13 @@ def readnodout(sim_folder):
     node_dict = {}
     for i in range(numnodes):
         values = np.array(node_values[i])
-        node_dict[int(values[0, 0])] = nod_tup(int(values[0, 0]), timestamps, *[values[:, i] for i in range(1, 7)],
-                                             *[values[:, i] for i in range(10, 13)])
+        node_dict[int(values[0, 0])] = nod_tup(timestamps, values[:, 1:4], values[:, 4:7], values[:, 10:13])
     return node_dict
 
 def readnodfor(sim_folder):
     '''Reads timestamps and resultant forces on nodfor file
     returns list of [t],[x,y,z]'''
-    nodfor_tup = namedtuple('nodfor_tup', ['time', 'Rx', 'Ry', 'Rz', 'Re'])
+    nodfor_tup = namedtuple('nodfor_tup', ['time', 'R'])
     with open(r'{}\nodfor'.format(sim_folder)) as nodfor:
         lines = nodfor.readlines()
 
@@ -198,23 +195,31 @@ def readnodfor(sim_folder):
     if len(output_time_data) == 0:
         return []
     timestamps = output_time_data[:, 1]
-    output_time_ind = output_time_data[:, 0]
-    numnodes = int((output_time_ind[1] - output_time_ind[0]))
-    force_values = []
+    output_time_ind = list(map(int, output_time_data[:, 0]))
+    numnodes = output_time_ind[1] - output_time_ind[0]
+    force_values = {}
+    ##
+    #Map set_id to group_id?
+    group_to_setid={}
+    for line in lines[:output_time_ind[0]]:
+        if 'Group from set' in line:
+            line = line.split()
+            group_to_setid[int(line[6])] = int(line[0])
+
     for ind, time in zip(output_time_ind, timestamps):
-        forceValuesTemp = []
-        for line in lines[int(ind):(int(ind) + numnodes)]:
+        for line in lines[ind:(ind + numnodes)]:
+            if 'nodal group output number' in line:
+                group_id = int(line.split()[-1])
             if 'xtotal' in line:
                 line = line.replace('\n', '')
                 line = line.split()
-                forceValuesTemp.append([float(value) for value in line[1::2]])
-        force_values.append(forceValuesTemp)
-    force_values = np.array(force_values)
-    force_list = []
-    for i in range(len(force_values[0, :, 0])):
-        force_list.append(nodfor_tup(timestamps, force_values[:, i, 0], force_values[:, i, 1], force_values[:, i, 2],
-                                   force_values[:, i, 3]))
-    return force_list
+                if ind==output_time_ind[0]:
+                    force_values[group_id] = []
+                force_values[group_id].append([float(value) for value in line[1:-1:2]])
+    force_dict = {}
+    for node_group in force_values.items():
+        force_dict[group_to_setid[node_group[0]]] = nodfor_tup(timestamps, np.array(node_group[1]))
+    return force_dict
 
 def node_order_cube(nodout_dict):
     '''Z-axis point up, second node along x-axis'''
