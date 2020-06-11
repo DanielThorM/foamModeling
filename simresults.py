@@ -37,7 +37,7 @@ class SimResults(object):
             traction = traction_rcforc(self.rcforc, node_order_cube(self.nodout))
 
         PK1 = traction / self.A0()
-        PK1_interp = scipy.interpolate.interp1d(time, PK1, axis=0)
+        PK1_interp = scipy.interpolate.interp1d(time, PK1, axis=0, fill_value='extrapolate')
         return PK1_interp(self.time)
 
     def F(self):
