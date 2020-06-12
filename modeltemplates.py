@@ -270,6 +270,8 @@ class BoundaryConditions:#
             coords = node.coord
             if ref_node_set != None:
                 self.keyword.set_node_list(nsid=10 + 10 * i, node_list=ref_node_set[i])
+            else:
+                self.keyword.set_node_list(nsid=10 + 10 * i, node_list=[node.id_])
             if len(def_gradient.shape) == 2:
                 u_gradient = def_gradient - np.identity(3)
                 u_disp = u_gradient.dot(coords)
@@ -285,17 +287,12 @@ class BoundaryConditions:#
                         self.keyword.define_curve_smooth(lcid=10 * (i + 1) + (j + 1), dist=abs(node_disp), tstart=0.0,
                                                          tend=self.keyword.endtim, trise_frac=0.1)
 
-                    if ref_node_set != None:
-                        self.keyword.boundary_prescribed_motion_set(bmsid=10 * (i + 1) + (j + 1), nsid=10 + 10 * i,
-                                                                dof=(j + 1),
-                                                                vad=vad, lcid=10 * (i + 1) + (j + 1), #if implicit: vad = 2, else vad = 0
-                                                                sf=np.sign(node_disp),
-                                                                birth=0.0, death=self.keyword.endtim)
-                    else:
-                        self.keyword.boundary_prescribed_motion_node(bmsid=10 * (i + 1) + (j + 1), nid=node.id_, dof=(j + 1),
-                                                                     vad=vad, lcid=10 * (i + 1) + (j + 1),
-                                                                     sf=np.sign(node_disp),
-                                                                     birth=0.0, death=self.keyword.endtim)
+
+                    self.keyword.boundary_prescribed_motion_set(bmsid=10 * (i + 1) + (j + 1), nsid=10 + 10 * i,
+                                                            dof=(j + 1),
+                                                            vad=vad, lcid=10 * (i + 1) + (j + 1), #if implicit: vad = 2, else vad = 0
+                                                            sf=np.sign(node_disp),
+                                                            birth=0.0, death=self.keyword.endtim)
 
 
 
@@ -320,21 +317,13 @@ class BoundaryConditions:#
                                                              tstart=0.0,
                                                              tend=time_inc, trise_frac=0.1)
 
-                        if ref_node_set != None:
-                            self.keyword.boundary_prescribed_motion_set(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
-                                                                        nsid=10 + 10 * i, dof=(j + 1),
-                                                                        vad=vad,
-                                                                        lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
-                                                                        sf=np.sign(node_disp), birth=k * time_inc,
-                                                                        death=(k + 1) * time_inc)
-                        else:
-
-                            self.keyword.boundary_prescribed_motion_node(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
-                                                                         nid=node.id_, dof=(j + 1),
-                                                                         vad=vad,
-                                                                         lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
-                                                                         sf=np.sign(node_disp), birth=k * time_inc,
-                                                                         death=(k + 1) * time_inc)
+                        self.keyword.boundary_prescribed_motion_set(bmsid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                    nsid=10 + 10 * i, dof=(j + 1),
+                                                                    vad=vad,
+                                                                    lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
+                                                                    sf=np.sign(node_disp), birth=k * time_inc,
+                                                                    death=(k + 1) * time_inc)
+                        
     ##################################################################################3
     #Periodic
     ##################################################################################################################

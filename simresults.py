@@ -30,18 +30,18 @@ class SimResults(object):
     def PK1(self, source='bndout'):
         if source == 'bndout':
             time=list(self.bndout.values())[0].time
-            traction = traction_bndout(self.bndout, node_order_cube(self.nodout))
+            traction = traction_bndout(self.bndout, node_order_element(self.nodout))
 
         elif source == 'rcforc':
             time = list(self.rcforc.values())[0].time
-            traction = traction_rcforc(self.rcforc, node_order_cube(self.nodout))
+            traction = traction_rcforc(self.rcforc, node_order_element(self.nodout))
 
         PK1 = traction / self.A0()
         PK1_interp = scipy.interpolate.interp1d(time, PK1, axis=0, fill_value='extrapolate')
         return PK1_interp(self.time)
 
     def F(self):
-        F_interp, _ = def_gradient(self.nodout)
+        F_interp, _ = def_gradient(self.nodout, dX_ref=self.dX_ref)
         return F_interp(self.time)
 
     def inf_strain(self):
@@ -155,14 +155,16 @@ def readbndout(sim_folder):
     for ind, time in zip(output_time_ind, timestamps):
         for i in range(numnodes):
             line = lines[int(ind) + header + i]
-            nid = int(line.split()[1])
-            values = [nid] + [float(force) for force in line.split()[3:8:2]]
+            line=line.split()
+            nid = int(line[1])
+            sid = int(line[12])
+            values = [nid] [sid] + [float(force) for force in line[3:8:2]]
             node_values[i].append(values)
     bndout_dict = {}
     for j in range(numnodes):
         values = np.array(node_values[j])
         bndout_dict[int(values[0, 0])] = bnd_tup(timestamps, values[:, 1:4])
-    return bndout_dict#, node_order
+    return bndout_dict, node_order
 
 def readglstat(sim_folder):
     '''Reads timestamps and resultant forces on bnd file
@@ -197,9 +199,14 @@ def readnodout(sim_folder):
         lines = nodout.readlines()
 
     output_time_data = np.array(
-        [[i, float(line.split()[-2])] for i, line in enumerate(lines) if 'at time' in line][::2])
+        [[int(i), float(line.split()[-2])] for i, line in enumerate(lines) if 'at time' in line])
     if len(output_time_data) == 0:
         return []
+
+    numnodes_scale = 1
+    if output_time_data[0][1] == output_time_data[1][1]:
+        output_time_data = output_time_data[::2, :]
+        numnodes_scale=2
     timestamps = output_time_data[:, 1]
     output_time_ind = output_time_data[:, 0]
     numnodes = int((output_time_ind[1] - output_time_ind[0]) / 2 - 6)
@@ -257,7 +264,7 @@ def readnodfor(sim_folder):
         force_dict[group_to_setid[node_group[0]]] = nodfor_tup(timestamps, np.array(node_group[1]))
     return force_dict
 
-def node_order_cube(nodout_dict):
+def node_order_element(nodout_dict):
     '''Z-axis point up, second node along x-axis'''
     corner_nodes = list(range(8))
     loc_bools = [[True, True, True],
@@ -275,7 +282,7 @@ def node_order_cube(nodout_dict):
     return corner_nodes
 
 def def_gradient(nodout_dict, dX_ref=None):
-    node_order=node_order_cube(nodout_dict)
+    node_order=node_order_element(nodout_dict)
     dX = np.array([nodout_dict[node].A[0] for node in node_order])
     if dX_ref != None:
         dX.astype(bool).astype(int)
@@ -301,6 +308,7 @@ def traction_bndout(bndout, node_order=None):
     bndout_list=list(bndout.values())
     if node_order != None:
         bndout_list = [bndout[ind] for ind in node_order]
+
     face_ind_order=[[[1,2,5,6], [0, 3, 4, 7]],
                [[2,3,6,7], [0, 1, 4, 5]],
                [[4, 5, 6, 7], [0, 1, 2, 3]]]
