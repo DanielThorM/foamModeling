@@ -147,6 +147,123 @@ class BoundaryConditions:#
         self.keyword.database_hist_node(nids=[node.id_ for node in self.mesh_geometry.plate_corner_nodes])
         return self.keyword
 
+    def plate_compression(self, def_gradient, soft=2, direction='z'):
+        self.keyword.comment_block('Boundary conditions')
+        side_parts = [surf[0] for surf in self.mesh_geometry.find_side_surfs() if surf != []]
+        side_elements = [self.mesh_geometry.shell_elements[elem].id_ for surf in side_parts for elem in self.mesh_geometry.surfs[surf].elem_ids]
+        plane_locs= [0.0, self.mesh_geometry.domain_size[0],
+                        0.0, self.mesh_geometry.domain_size[1],
+                        0.0, self.mesh_geometry.domain_size[2]]
+        planes = ['x', 'x', 'y', 'y', 'z', 'z']
+        face_nodes_list = []
+        i=0
+        for plane, plane_loc in zip(planes, plane_locs):
+            nodes = list(set(self.mesh_geometry.create_node_list_in_plane(plane=plane, plane_loc=plane_loc))
+                          - set([node.id_ for node in self.mesh_geometry.plate_corner_nodes])) #remove plate corner nodes
+            face_nodes_list.append(nodes)
+            i += 1
+        face_core_nodes_list = []
+        for i, plane in enumerate(['x', 'y', 'z']):
+            if plane == 'x':
+                rem_nodes = set([node for node_list in face_nodes_list[2:] for node in node_list])
+            elif plane == 'y':
+                rem_nodes = set([node for node_list in [*face_nodes_list[:2], *face_nodes_list[4:]] for node in node_list])
+            elif plane == 'z':
+                rem_nodes = set([node for node_list in face_nodes_list[:4] for node in node_list])
+            face_core_nodes_list.append(list(set(face_nodes_list[i * 2]) - rem_nodes))
+            face_core_nodes_list.append(list(set(face_nodes_list[(i * 2) + 1]) - rem_nodes))
+
+        full_side_part_list = self.mesh_geometry.find_side_surfs()
+        side_node_lists = [[], [], [], [], [], []]
+        if len(side_parts) == 2:
+            plane_combinations={0:[[[1], [0, 0, 0], [0]],
+                                   [[1], [0, 0, 0], [0]],
+                                   [[0], [1, 0, 1], [0]],
+                                   [[0], [1, 0, 1], [0]],
+                                   [[0], [0, 0, 0], [1]],
+                                   [[0], [0, 0, 0], [1]]],
+                                2:[[[0], [0, 0, 0], [1]],
+                                   [[0], [0, 0, 0], [1]],
+                                   [[1], [0, 0, 0], [0]],
+                                   [[1], [0, 0, 0], [0]],
+                                   [[0], [1, 2, 3], [0]],
+                                   [[0], [1, 2, 3], [0]]],
+                                4:[[[0], [1, 4, 5], [0]],
+                                   [[0], [1, 4, 5], [0]],
+                                   [[0], [0, 0, 0], [1]],
+                                   [[0], [0, 0, 0], [1]],
+                                   [[1], [0, 0, 0], [0]],
+                                   [[1], [0, 0, 0], [0]]]}
+            for i in range(0, 6, 2):
+                if full_side_part_list[i] != []:
+                    plane_combination = plane_combinations[i]
+                    break
+        elif len(side_parts) == 4:
+            plane_combinations = {4: [[[1], [0, 0, 0], [0]],
+                                      [[1], [0, 0, 0], [0]],
+                                      [[0], [1, 0, 1], [0]],
+                                      [[0], [1, 0, 1], [0]],
+                                      [[0], [0, 0, 0], [1]],
+                                      [[0], [0, 0, 0], [1]]],
+                                  0: [[[0], [0, 0, 0], [1]],
+                                      [[0], [0, 0, 0], [1]],
+                                      [[1], [0, 0, 0], [0]],
+                                      [[1], [0, 0, 0], [0]],
+                                      [[0], [1, 2, 3], [0]],
+                                      [[0], [1, 2, 3], [0]]],
+                                  2: [[[0], [1, 4, 5], [0]],
+                                      [[0], [1, 4, 5], [0]],
+                                      [[0], [0, 0, 0], [1]],
+                                      [[0], [0, 0, 0], [1]],
+                                      [[1], [0, 0, 0], [0]],
+                                      [[1], [0, 0, 0], [0]]]}
+            for i in range(0, 6, 2):
+                if full_side_part_list[i] == []:
+                    plane_combination = plane_combinations[i]
+                    break
+        else:
+            plane_combination =     [[[1], [0, 0, 0], [0]],
+                                      [[1], [0, 0, 0], [0]],
+                                      [[0], [1, 0, 1], [0]],
+                                      [[0], [1, 0, 1], [0]],
+                                      [[0], [0, 0, 0], [1]],
+                                      [[0], [0, 0, 0], [1]]]
+
+        for i in range(6):
+            side_node_lists[i].extend(face_nodes_list[i] * plane_combination[i][0][0])
+            side_node_lists[i].extend(list(set(face_nodes_list[i])
+                                           - set(face_nodes_list[plane_combination[i][1][1]])
+                                           - set(face_nodes_list[plane_combination[i][1][2]])
+                                           )* plane_combination[i][1][0])
+            side_node_lists[i].extend(face_core_nodes_list[i] * plane_combination[i][2][0])
+
+
+        def tiebreak_contact_node_to_surface(self, soft):
+            for i, side_part in enumerate(full_side_part_list):
+                if side_part != [] and side_node_lists[i] != []:
+                    side_part=side_part[0]
+                    self.keyword.set_node_list(nsid=(i + 101), node_list=side_node_lists[i])
+                    if surf_contact == True:
+                        node_list = []
+                        for face in side_faces_list[i]:
+                            for element in self.mesh_geometry.surfs[face].elem_ids:
+                                node_list.extend(self.mesh_geometry.shell_elements[element].node_ids)
+                        side_faces_nodes = list(set(node_list) - set(side_node_lists[i]))
+                        self.keyword.set_node_list(nsid=(i + 301), node_list=side_faces_nodes)
+                        self.keyword.contact_automatic_nodes_to_surface(cid=(i + 301), ssid=(i + 301), msid=side_part,
+                                                                        soft=soft, ignore=1,
+                                                                        depth=1)
+        self.keyword.contact_automatic_general_id(cid=101, ssid=0, msid=0, soft=soft, ignore=1)
+
+        corner_nodes = self.mesh_geometry.corner_nodes
+        ref_node_set = [[nid.id_] for nid in self.mesh_geometry.plate_corner_nodes]
+        if direction == 'z':
+            ref_node_set[0].extend(side_node_lists[4])
+            ref_node_set[6].extend(side_node_lists[5])
+        self.def_grad_prescription(def_gradient, corner_nodes, ref_node_set=ref_node_set)
+        self.keyword.database_hist_node(nids=[node.id_ for node in self.mesh_geometry.plate_corner_nodes])
+        return self.keyword
+
     def def_grad_prescription(self, def_gradient, ref_nodes, ref_node_set = None):
         disp_type = self.keyword.disp_type
         for i, node in enumerate(ref_nodes):
@@ -1137,6 +1254,6 @@ def single_elements_template(def_gradient, model_file_name, material_data={}, do
 
 
 #def_gradient = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1.2]])
-os.chdir(r'H:\thesis\periodic\representative\S05R1\ID1')
-model_file_name = 'testKey.key'
+#os.chdir(r'H:\thesis\periodic\representative\S05R1\ID1')
+#model_file_name = 'testKey.key'
 #periodic_template(tessellation, model_file_name, def_gradient, sim_type='implicit', strain_coeff = 0.2, strain_rate = 1e2, size_coeff = 0.5)
