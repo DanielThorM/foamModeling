@@ -44,16 +44,20 @@ class SimResults(object):
         if source == 'nodfor':
             time = list(self.nodfor.values())[0].time
             traction = traction_nodfor(self.nodfor)
-        ={'x':0, 'y':1, 'z':2}
-        PK1 = traction / sdir_dictelf.A0()
-        PK1_interp = scipy.interpolate.interp1d(time, PK1[:,dir_dict[plate],:], axis=0, fill_value='extrapolate')
-        return PK1_interp(self.time)
+        dir_dict={'x':0, 'y':1, 'z':2}
+        PK1 = traction / self.A0()
+        PK1_interp = scipy.interpolate.interp1d(time, PK1, axis=0, fill_value='extrapolate')
+        return PK1_interp(self.time)[:,dir_dict[plate],:]
 
     def F(self):
         F_interp, _ = def_gradient(self.nodout, dX_ref=self.dX_ref)
         return F_interp(self.time)
 
     def inf_strain(self):
+        F_temp=self.F()
+        return 0.5*(np.transpose(F_temp, (0, 2, 1))+F_temp)-np.identity(3)
+
+    def inf_strain_plate(self):
         F_temp=self.F()
         return 0.5*(np.transpose(F_temp, (0, 2, 1))+F_temp)-np.identity(3)
 
@@ -265,9 +269,13 @@ def readnodfor(sim_folder):
         if 'Group from set' in line:
             line = line.split()
             group_to_setid[int(line[6])] = int(line[0])
-    output_time_ind.append(-1)
+    #output_time_ind.append(-)
     for ind, time in enumerate(timestamps):
-        for line in lines[output_time_ind[ind]:output_time_ind[ind+1]+1]:
+        if ind == len(timestamps)-1:
+            lines_temp = lines[output_time_ind[ind]:]
+        else:
+            lines_temp=lines[output_time_ind[ind]:output_time_ind[ind+1]]
+        for line in lines_temp:
             if 'nodal group output number' in line:
                 group_id = int(line.split()[-1])
             if 'xtotal' in line:
