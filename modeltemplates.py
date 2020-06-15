@@ -262,6 +262,9 @@ class BoundaryConditions:#
             ref_node_set[6].extend(side_node_lists[5])
         self.def_grad_prescription(def_gradient, corner_nodes, ref_node_set=ref_node_set)
         self.keyword.database_hist_node(nids=[node.id_ for node in self.mesh_geometry.plate_corner_nodes])
+        for i in range(8):
+            self.keyword.set_node_list(nsid=888888 + i, node_list=ref_node_set[i])
+            self.keyword.database_nodfor_group(nsid=888888 + i)
         return self.keyword
 
     def def_grad_prescription(self, def_gradient, ref_nodes, ref_node_set = None):
@@ -323,7 +326,7 @@ class BoundaryConditions:#
                                                                     lcid=1000 * (k + 1) + 10 * (i + 1) + (j + 1),
                                                                     sf=np.sign(node_disp), birth=k * time_inc,
                                                                     death=(k + 1) * time_inc)
-                        
+
     ##################################################################################3
     #Periodic
     ##################################################################################################################

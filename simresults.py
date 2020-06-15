@@ -40,6 +40,15 @@ class SimResults(object):
         PK1_interp = scipy.interpolate.interp1d(time, PK1, axis=0, fill_value='extrapolate')
         return PK1_interp(self.time)
 
+    def PK1_plate(self, source='nodfor', plate='z'):
+        if source == 'nodfor':
+            time = list(self.nodfor.values())[0].time
+            traction = traction_nodfor(self.nodfor)
+        ={'x':0, 'y':1, 'z':2}
+        PK1 = traction / sdir_dictelf.A0()
+        PK1_interp = scipy.interpolate.interp1d(time, PK1[:,dir_dict[plate],:], axis=0, fill_value='extrapolate')
+        return PK1_interp(self.time)
+
     def F(self):
         F_interp, _ = def_gradient(self.nodout, dX_ref=self.dX_ref)
         return F_interp(self.time)
@@ -139,7 +148,7 @@ def readspcforc(sim_folder):
 def readbndout(sim_folder):
     '''Reads timestamps and resultant forces on bnd file
     returns [t],F_xyz'''
-    bnd_tup = namedtuple('bndTup', ['time', 'F'])
+    bnd_tup = namedtuple('bndTup', ['time', 'bndsid', 'F'])
     with open(r'{}\bndout'.format(sim_folder)) as bndout:
         lines = bndout.readlines()
 
@@ -147,24 +156,32 @@ def readbndout(sim_folder):
         [[i, float(line.split()[-1])] for i, line in enumerate(lines) if r' t= ' in line])
     if len(output_time_data) == 0:
         return []
+
     timestamps = output_time_data[:, 1]
-    output_time_ind = output_time_data[:, 0]
-    numnodes = int((output_time_ind[1] - output_time_ind[0]) - 6)
+    output_time_ind = list(map(int, output_time_data[:, 0]))
+    bndsids = []
+    for line in lines[:output_time_ind[0]]:
+        if 'Boundary disp' in line:
+            line = line.split()
+            bndsids.append(line[0])
+
+    numnodes = (output_time_ind[1] - output_time_ind[0]) - 6
     header = 4
     node_values = [[] for _ in range(numnodes)]
     for ind, time in zip(output_time_ind, timestamps):
         for i in range(numnodes):
-            line = lines[int(ind) + header + i]
+            line = lines[ind + header + i]
             line=line.split()
             nid = int(line[1])
             sid = int(line[12])
-            values = [nid] [sid] + [float(force) for force in line[3:8:2]]
+            values = [nid] + [sid] + [float(force) for force in line[3:8:2]]
             node_values[i].append(values)
     bndout_dict = {}
+    #for bndsid in bndsids:
     for j in range(numnodes):
         values = np.array(node_values[j])
-        bndout_dict[int(values[0, 0])] = bnd_tup(timestamps, values[:, 1:4])
-    return bndout_dict, node_order
+        bndout_dict[int(values[0, 0])] = bnd_tup(timestamps, int(values[0, 1]), values[:, 2:5])
+    return bndout_dict
 
 def readglstat(sim_folder):
     '''Reads timestamps and resultant forces on bnd file
@@ -209,7 +226,7 @@ def readnodout(sim_folder):
         numnodes_scale=2
     timestamps = output_time_data[:, 1]
     output_time_ind = output_time_data[:, 0]
-    numnodes = int((output_time_ind[1] - output_time_ind[0]) / 2 - 6)
+    numnodes = int((output_time_ind[1] - output_time_ind[0]) / numnodes_scale - 6)
     header = 3
     node_values = [[] for _ in range(numnodes)]
     for ind, time in zip(output_time_ind, timestamps):
@@ -248,56 +265,70 @@ def readnodfor(sim_folder):
         if 'Group from set' in line:
             line = line.split()
             group_to_setid[int(line[6])] = int(line[0])
-
-    for ind, time in zip(output_time_ind, timestamps):
-        for line in lines[ind:(ind + numnodes)]:
+    output_time_ind.append(-1)
+    for ind, time in enumerate(timestamps):
+        for line in lines[output_time_ind[ind]:output_time_ind[ind+1]+1]:
             if 'nodal group output number' in line:
                 group_id = int(line.split()[-1])
             if 'xtotal' in line:
                 line = line.replace('\n', '')
                 line = line.split()
-                if ind==output_time_ind[0]:
+                if ind==0:
                     force_values[group_id] = []
                 force_values[group_id].append([float(value) for value in line[1:-1:2]])
-    force_dict = {}
+    nodfor = {}
     for node_group in force_values.items():
-        force_dict[group_to_setid[node_group[0]]] = nodfor_tup(timestamps, np.array(node_group[1]))
-    return force_dict
+        nodfor[group_to_setid[node_group[0]]] = nodfor_tup(timestamps, np.array(node_group[1]))
+    return nodfor
 
-def node_order_element(nodout_dict):
+def node_order_element(nodout):
     '''Z-axis point up, second node along x-axis'''
     corner_nodes = list(range(8))
-    loc_bools = [[True, True, True],
-                         [False, True, True],
-                         [False, False, True],
-                         [True, False, True],
-                         [True, True, False],
-                         [False, True, False],
-                         [False, False, False],
-                         [True, False, False]]
-    for node in nodout_dict.items():
+    box_array = np.array([node.A[0] for node in nodout.values()])
+    box_array_x = [min(box_array[:,0]), max(box_array[:,0])]
+    box_array_y = [min(box_array[:, 1]), max(box_array[:, 1])]
+    box_array_z = [min(box_array[:, 2]), max(box_array[:, 2])]
+    loc_bools =         [[box_array_x[0], box_array_y[0], box_array_z[0]],
+                         [box_array_x[1], box_array_y[0], box_array_z[0]],
+                         [box_array_x[1], box_array_y[1], box_array_z[0]],
+                         [box_array_x[0], box_array_y[1], box_array_z[0]],
+                         [box_array_x[0], box_array_y[0], box_array_z[1]],
+                         [box_array_x[1], box_array_y[0], box_array_z[1]],
+                         [box_array_x[1], box_array_y[1], box_array_z[1]],
+                         [box_array_x[0], box_array_y[1], box_array_z[1]]]
+
+
+    for node in nodout.items():
         for ind, loc_bool in enumerate(loc_bools):
-            if all((node[1].A[0] == [0, 0, 0]) == loc_bool):
+            if all((node[1].A[0] == loc_bool)):
                 corner_nodes[ind] = node[0]
     return corner_nodes
 
-def def_gradient(nodout_dict, dX_ref=None):
-    node_order=node_order_element(nodout_dict)
-    dX = np.array([nodout_dict[node].A[0] for node in node_order])
-    if dX_ref != None:
-        dX.astype(bool).astype(int)
-        dX=dX*dX_ref
+def def_gradient(nodout, dX_ref=None):
+    node_order=node_order_element(nodout)
+    dX = np.array([nodout[node].A[0] for node in node_order])
+    dX_org = dX
+    if type(dX_ref) == type(np.array([])):
+        loc_bools = np.array([[0, 0, 0],
+                     [1, 0, 0],
+                     [1,1, 0],
+                     [0, 1, 0],
+                     [0, 0, 1],
+                     [1, 0, 1],
+                     [1, 1, 1],
+                     [0, 1,1]])
+        dX=loc_bools*dX_ref
     # deformed vectors
-    dx = np.array([nodout_dict[node].A for node in node_order]).swapaxes(0, 1)
-    time = nodout_dict[node_order[0]].time
+    dx = np.array([nodout[node].A for node in node_order]).swapaxes(0, 1)
+    time = nodout[node_order[0]].time
     #dx_interp = scipy.interpolate.interpolate.interp1d(time, dx, axis=0, fill_value='extrapolate')
     # solving linear system for all timesteps
-    F_ = np.array([np.dot(dx_[5:].T, np.linalg.inv(dX[5:].T)) for dx_ in dx])
+    F_ = np.array([np.dot(dx_[5:].T, np.linalg.inv(dX_org[5:].T)) for dx_ in dx])
     F_interp = scipy.interpolate.interp1d(time, F_, axis=0, fill_value='extrapolate')
     return F_interp, dX
 
-def area(F, dX):
-    dx=[np.dot(dX_inst, F) for dX_inst in dX]
+def area(F_, dX):
+    dx=[np.dot(dX_inst, F_) for dX_inst in dX]
     A_temp=[]
     for inds in [[7, 0, 4, 3],[5, 0, 4, 1],[2,0,3,1]]:
         A_temp.append(np.linalg.norm(np.cross(dx[inds[0]] - dx[inds[1]], dx[inds[2]] - dx[inds[3]])) / 2)
@@ -317,6 +348,25 @@ def traction_bndout(bndout, node_order=None):
         for j, jinds in enumerate(face_ind_order):
             pos_sum =np.sum([bndout_list[ind].F[:,i] for ind in jinds[1]], axis=0)
             neg_sum =np.sum([bndout_list[ind].F[:,i] for ind in jinds[0]], axis=0)
+            R[i * 3 + j] = (pos_sum-neg_sum) / 2.
+
+    R=np.array(R).reshape(3,3,-1).swapaxes(0,2)
+    traction = -1 * R
+    return traction
+
+def traction_nodfor(nodfor, node_order=None):
+    nodfor_list=list(nodfor.values())
+    if node_order != None:
+        nodfor_list = [nodfor[ind] for ind in node_order]
+
+    face_ind_order=[[[1,2,5,6], [0, 3, 4, 7]],
+               [[2,3,6,7], [0, 1, 4, 5]],
+               [[4, 5, 6, 7], [0, 1, 2, 3]]]
+    R = list(range(9))
+    for i in range(3):
+        for j, jinds in enumerate(face_ind_order):
+            pos_sum =np.sum([nodfor_list[ind].R[:,i] for ind in jinds[1]], axis=0)
+            neg_sum =np.sum([nodfor_list[ind].R[:,i] for ind in jinds[0]], axis=0)
             R[i * 3 + j] = (pos_sum-neg_sum) / 2.
 
     R=np.array(R).reshape(3,3,-1).swapaxes(0,2)
@@ -357,8 +407,6 @@ def traction_rcforc(rcforc, ftorder=None):
         #forceP = -1 * np.array([[Rxx, Ryx, Rzx],
                                 #[Rxy, Ryy, Rzy],
                                 #[Rxz, Ryz, Rzz]]).swapaxes(0, 1).swapaxes(0, 2)
-
-
 
 def gasContr(self, relativeDensity):
     #P1V1/T1= P2V2/T2
