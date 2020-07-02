@@ -1,11 +1,3 @@
-#sys.path.insert(0, r'C:\Users\danieltm\OneDrive - NTNU\Python_Github\keywordGenerator')
-#sys.path.insert(0, r'C:\Users\danieltm\OneDrive - NTNU\Python_Github\tessToPy')
-import importlib as imp
-#import tessellations as ts
-#import meshmodel as mm
-#import keywordGenerator as kw
-#imp.reload(mm)
-#imp.reload(kw)
 import numpy as np
 import os
 import subprocess
@@ -377,7 +369,7 @@ class BoundaryConditions:#
         temp_coeff_list = list(np.array(temp_list)[:,1])
         return temp_nid_list, temp_coeff_list
 
-    def periodic_linear_local(self, def_gradient):
+    def periodic_linear_local(self, def_gradient, node_rot_lock=False):
         constrained_id_counter=9000001
         ref_elements = list(self.mesh_geometry.solid_elements.values())
         ref_nodes = [ref_elem.node_ids[0] for ref_elem in ref_elements]
@@ -405,7 +397,14 @@ class BoundaryConditions:#
                     self.keyword.constrained_linear_local(lcid=constrained_id_counter, nid_list=temp_nids,
                                                         coeff_list=temp_coeffs, direction=direction + 1)
                     constrained_id_counter += 1
-            
+
+            if node_rot_lock == True:
+                for coeffs in coeff_list: #coeffs = coeff_list[0]
+                    temp_nids, temp_coeffs = self.match_nid_coef(nid_list, coeffs, ref_node=ref_nodes[0])
+                    for direction in range(0, 3):
+                        self.keyword.constrained_linear_local(lcid=constrained_id_counter, nid_list=temp_nids[:2],
+                                                            coeff_list=temp_coeffs[:2], direction=direction + 4)
+                    constrained_id_counter += 1
         #####################################################################
         #Element displacemente
         #####################################################################
@@ -567,7 +566,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
     }
     material.update(material_data)
 
-    mesh_geometry = mm.FoamModel(tessellation) # mesh_geometry = LSDynaPerGeom(perTessGeometry, debug=True) #mesh_geometry = LSDynaPerGeom(tessellation, debug=True)
+    mesh_geometry = mm.FoamModel(tessellation) # mesh_geometry = LSDynaPerGeom(perTessGeometry, debug=True) #self=mm.FoamModel(tessellation, debug=True)
     keyword = kw.Keyword(model_file_name)# model_file_name = r'H:\thesis\periodic\representative\S05R1\ID1\testKey.key'
     keyword.comment_block('Control')
     keyword.control_structured()
@@ -731,7 +730,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
 
 
     if options['sim_type'] == 'implicit':
-        keyword = BCs.periodic_linear_local(def_gradient)
+        keyword = BCs.periodic_linear_local(def_gradient, node_rot_lock=True)
         keyword.end_key()
         keyword.write_key()
     elif options['sim_type'] == 'explicit':
@@ -1243,9 +1242,21 @@ def single_elements_template(def_gradient, model_file_name, material_data={}, do
     keyword.end_key()
     keyword.write_key()
 
-
-
+#sys.path.insert(0, r'C:\Users\danieltm\OneDrive - NTNU\Python_Github\tessToPy')
+#import tessellations as ts
+#sys.path.insert(0, r'C:\Users\danieltm\OneDrive - NTNU\Python_Github\keywordGenerator')
+#import importlib as imp
+#import meshmodel as mm
+#import keywordGenerator as kw
+#imp.reload(mm)
+#imp.reload(kw)
+#imp.reload(ts)
 #def_gradient = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1.2]])
 #os.chdir(r'H:\thesis\periodic\representative\S05R1\ID1')
 #model_file_name = 'testKey.key'
+#mesh_file_name =  r'test'
+#tessellation = ts.Tessellation('nfrom_morpho-id1_mod.tess')
+##self.regularize(n=int(len(self.edges.keys())/2))
+#tessellation.mesh_file_name=mesh_file_name
+#tessellation.mesh2D(elem_size=0.02)
 #periodic_template(tessellation, model_file_name, def_gradient, sim_type='implicit', strain_coeff = 0.2, strain_rate = 1e2, size_coeff = 0.5)
