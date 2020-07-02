@@ -628,6 +628,41 @@ class FoamModel(MeshModel):
             if self.tessellation.edges[int(part - self.beam_num_offset) / 10].slave_to != []:
                 self.beams[part].slave = True
 
+    def delete_slave_surfaces(self):
+        if self.tessellation.periodic == False: raise Exception('Invalid action for current tesselation')
+        for face in self.tessellation.faces.values():  # face = list(self.tessellation.faces.values())[0]
+            if face.master_to != []:
+                unit_periodicity = face.master_to[1:4]
+                periodicity = np.array(unit_periodicity) * self.tessellation.domain_size
+                master_part = self.surfs[face.id_ * 10 + self.surf_num_offset]
+                master_part_edge_nodes = list(set(
+                    [node for edge in self.tessellation.faces[face.id_].edges for node in
+                     self.nodes_on_edges[abs(edge)]]))
+                slave_part_id = face.master_to[0] * 10 + self.surf_num_offset
+                slave_part = self.surfs[slave_part_id]
+                slave_part_edge_nodes = list(set(
+                    [node for edge in self.tessellation.faces[face.master_to[0]].edges for node in
+                     self.nodes_on_edges[abs(edge)]]))
+                all_nodes_on_master_face = list(set([node for elem in master_part.elem_ids
+                                                     for node in self.shell_elements[elem].node_ids]))
+                all_nodes_on_slave_face = list(set([node for elem in slave_part.elem_ids
+                                                    for node in self.shell_elements[elem].node_ids]))
+                # Create new node numbering for all slave nodes. Re-assign edge nodes.
+
+
+                for element in slave_part.elem_ids:
+                    del self.shell_elements[element]
+                for node in all_nodes_on_slave_face:
+                    if node not in slave_part_edge_nodes:
+                        self.nodes[self.nodes[node].slave_to[0]].master_to = []
+                        del self.nodes[node]
+
+                del self.surfs[face.master_to[0] * 10 + self.surf_num_offset]
+
+
+        for part in self.beams.keys():
+            if self.tessellation.edges[int(part - self.beam_num_offset) / 10].slave_to != []:
+                self.beams[part].slave = True
     def create_beam_elements(self):
         beam_elements = {}
         for edge in self.tessellation.edges.values(): #edge = list(self.tessellation.edges.values())[0]

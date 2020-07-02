@@ -543,7 +543,8 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
         'airbag':False,
         'beam_shape':'straight', #'marvi
         'beam_cs_shape':'round', #'tri'
-        'shell_nip':7
+        'shell_nip':7,
+        'delete_slave_surfs':False
     }
     options.update(kwargs)
     material = {
@@ -566,7 +567,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
     }
     material.update(material_data)
 
-    mesh_geometry = mm.FoamModel(tessellation) # mesh_geometry = LSDynaPerGeom(perTessGeometry, debug=True) #self=mm.FoamModel(tessellation, debug=True)
+    mesh_geometry = mm.FoamModel(tessellation)# mesh_geometry = LSDynaPerGeom(perTessGeometry, debug=True) #self=mm.FoamModel(tessellation, debug=True)
     keyword = kw.Keyword(model_file_name)# model_file_name = r'H:\thesis\periodic\representative\S05R1\ID1\testKey.key'
     keyword.comment_block('Control')
     keyword.control_structured()
@@ -633,6 +634,8 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
     keyword.mat_null(mid=2, e = material['e'])
     #keyword.mat24(mid=2, e=material['e']/2, sigy=0.0001, fail=material['matfail'], etan=0.00001)
 
+    if options['delete_slave_surfs'] == True:
+        mesh_geometry.delete_slave_surfaces()
 
     mesh_geometry.set_csa_sigma(options['csa_sigma'])
     mesh_geometry.set_tt_sigma(options['tt_sigma'])
@@ -1251,7 +1254,7 @@ def single_elements_template(def_gradient, model_file_name, material_data={}, do
 #imp.reload(mm)
 #imp.reload(kw)
 #imp.reload(ts)
-#def_gradient = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1.2]])
+#def_gradient = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 0.2]])
 #os.chdir(r'H:\thesis\periodic\representative\S05R1\ID1')
 #model_file_name = 'testKey.key'
 #mesh_file_name =  r'test'
@@ -1259,4 +1262,4 @@ def single_elements_template(def_gradient, model_file_name, material_data={}, do
 ##self.regularize(n=int(len(self.edges.keys())/2))
 #tessellation.mesh_file_name=mesh_file_name
 #tessellation.mesh2D(elem_size=0.02)
-#periodic_template(tessellation, model_file_name, def_gradient, sim_type='implicit', strain_coeff = 0.2, strain_rate = 1e2, size_coeff = 0.5)
+#periodic_template(tessellation, model_file_name, def_gradient, sim_type='implicit', strain_coeff = 1.0, strain_rate = 1e2, size_coeff = 0.5, delete_slave_surfs=True)
