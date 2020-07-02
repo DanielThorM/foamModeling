@@ -405,7 +405,7 @@ class BoundaryConditions:#
                     self.keyword.constrained_linear_local(lcid=constrained_id_counter, nid_list=temp_nids,
                                                         coeff_list=temp_coeffs, direction=direction + 1)
                     constrained_id_counter += 1
-
+            
         #####################################################################
         #Element displacemente
         #####################################################################
