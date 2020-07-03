@@ -4,7 +4,7 @@ import numpy as np
 import scipy.interpolate
 
 class SimResults(object):
-    def __init__(self, sim_folder):
+    def __init__(self, sim_folder, periodic=False):
         if sim_folder == '':
             sim_folder=os.getcwd()
         self.sim_folder=sim_folder
@@ -26,19 +26,31 @@ class SimResults(object):
             self.nodfor = readnodfor(sim_folder)
 
         self.dX_ref = None
-
+        self.periodic=periodic
     def PK1(self, source='bndout'):
-        if source == 'bndout':
-            time=list(self.bndout.values())[0].time
-            traction = traction_bndout(self.bndout, node_order_element(self.nodout))
+        if self.periodic == True:
+            if source == 'bndout':
+                time = list(self.bndout.values())[0].time
+                traction = traction_bndout_periodic(self.bndout)
 
-        elif source == 'rcforc':
-            time = list(self.rcforc.values())[0].time
-            traction = traction_rcforc(self.rcforc, node_order_element(self.nodout))
+            elif source == 'nodfor':
+                time = list(self.nodfor.values())[0].time
+                traction = traction_nodfor_periodic(self.nodfor)
+
+        else:
+            if source == 'bndout':
+                time=list(self.bndout.values())[0].time
+                traction = traction_bndout(self.bndout, node_order_element(self.nodout))
+
+            elif source == 'rcforc':
+                time = list(self.rcforc.values())[0].time
+                traction = traction_rcforc(self.rcforc, node_order_element(self.nodout))
+
 
         PK1 = traction / self.A0()
         PK1_interp = scipy.interpolate.interp1d(time, PK1, axis=0, fill_value='extrapolate')
         return PK1_interp(self.time)
+
 
     def PK1_plate(self, source='nodfor', plate='z'):
         if source == 'nodfor':
@@ -50,7 +62,10 @@ class SimResults(object):
         return PK1_interp(self.time)[:,dir_dict[plate],:]
 
     def F(self):
-        F_interp, _ = def_gradient(self.nodout, dX_ref=self.dX_ref)
+        if self.periodic == True:
+            F_interp, _ = def_gradient_periodic(self.nodout, dX_ref=self.dX_ref)
+        else:
+            F_interp, _ = def_gradient(self.nodout, dX_ref=self.dX_ref)
         return F_interp(self.time)
 
     def inf_strain(self):
@@ -62,8 +77,12 @@ class SimResults(object):
         return 0.5*(np.transpose(F_temp, (0, 2, 1))+F_temp)-np.identity(3)
 
     def A0(self):
-        F_interp, dX = def_gradient(self.nodout, dX_ref=self.dX_ref)
-        A0 = area(F_interp(0.0), dX)
+        if self.periodic == True:
+            F_interp, dX = def_gradient_periodic(self.nodout, dX_ref=self.dX_ref)
+            A0 = area_periodic(F_interp(0.0), dX)
+        else:
+            F_interp, dX = def_gradient(self.nodout, dX_ref=self.dX_ref)
+            A0 = area(F_interp(0.0), dX)
         return A0
     # os.chdir(workingFolder)
 
@@ -335,12 +354,43 @@ def def_gradient(nodout, dX_ref=None):
     F_interp = scipy.interpolate.interp1d(time, F_, axis=0, fill_value='extrapolate')
     return F_interp, dX
 
+def def_gradient_periodic(nodout, dX_ref=None):
+    node_order=list(nodout.keys())
+    node_order.sort()
+    dX = np.array([nodout[node].A[0] for node in node_order[1:]])
+    dX_org = dX
+    if type(dX_ref) == type(np.array([])):
+        loc_bools = np.array([[0, 0, 0],
+                     [1, 0, 0],
+                     [1,1, 0],
+                     [0, 1, 0],
+                     [0, 0, 1],
+                     [1, 0, 1],
+                     [1, 1, 1],
+                     [0, 1,1]])
+        dX=loc_bools*dX_ref
+    # deformed vectors
+    dx = np.array([nodout[node].A for node in node_order[1:]]).swapaxes(0, 1)
+    time = nodout[node_order[0]].time
+    #dx_interp = scipy.interpolate.interpolate.interp1d(time, dx, axis=0, fill_value='extrapolate')
+    # solving linear system for all timesteps
+    F_ = np.array([np.dot(dx_.T, np.linalg.inv(dX_org.T)) for dx_ in dx])
+    F_interp = scipy.interpolate.interp1d(time, F_, axis=0, fill_value='extrapolate')
+    return F_interp, dX
+
 def area(F_, dX):
     dx=[np.dot(dX_inst, F_) for dX_inst in dX]
     A_temp=[]
     for inds in [[7, 0, 4, 3],[5, 0, 4, 1],[2,0,3,1]]:
         A_temp.append(np.linalg.norm(np.cross(dx[inds[0]] - dx[inds[1]], dx[inds[2]] - dx[inds[3]])) / 2)
     A = np.array([A_temp]*3)
+    return A
+
+def area_periodic(F_, dX):
+    dx=np.array([np.dot(dX_inst, F_) for dX_inst in dX])
+    A=np.array([[dx[2,2]*dx[1,1]]*3,
+                [dx[0, 0] * dx[2, 2]] * 3,
+                [dx[0, 0] * dx[1, 1]] * 3])
     return A
 
 def traction_bndout(bndout, node_order=None):
@@ -362,6 +412,31 @@ def traction_bndout(bndout, node_order=None):
     traction = -1 * R
     return traction
 
+def traction_bndout_periodic(bndout):
+    bndout_list = list(bndout.values())
+    Rxx = bndout_list[1].F[:, 0]
+    Rxy = bndout_list[1].F[:, 1]
+    Rxz = bndout_list[1].F[:, 2]
+
+    Ryx = bndout_list[2].F[:, 0]
+    Ryy = bndout_list[2].F[:, 1]
+    Ryz = bndout_list[2].F[:, 2]
+
+    Rzx = bndout_list[3].F[:, 0]
+    Rzy = bndout_list[3].F[:, 1]
+    Rzz = bndout_list[3].F[:, 2]
+
+    # forceP=-1*np.array([[Rxx, Rxy, Rxz],
+    #                   [Ryx, Ryy, Ryz],
+    #                  [Rzx, Rzy, Rzz]]).swapaxes(0, 1).swapaxes(0, 2)
+
+    # df= P N ds
+    R = np.array([[Rxx, Ryx, Rzx],
+                  [Rxy, Ryy, Rzy],
+                  [Rxz, Ryz, Rzz]]).swapaxes(0, 1).swapaxes(0, 2)
+    traction = 1 * R
+    return traction
+
 def traction_nodfor(nodfor, node_order=None):
     nodfor_list=list(nodfor.values())
     if node_order != None:
@@ -378,6 +453,127 @@ def traction_nodfor(nodfor, node_order=None):
             R[i * 3 + j] = (pos_sum-neg_sum) / 2.
 
     R=np.array(R).reshape(3,3,-1).swapaxes(0,2)
+    traction = -1 * R
+    return traction
+
+def stressP(self, source='bndout'):
+    #bndDict, nodeOrder = self.readbndout()
+    nodeDict = self.readnodout()
+    nodeOrder = list(nodeDict.keys())
+    nodeOrder.sort()
+    dX = np.array([[nodeDict[node].x[0], nodeDict[node].y[0], nodeDict[node].z[0]] for node in nodeOrder[1:]])
+    # deformed vectors
+    dx = np.array([[nodeDict[node].x, nodeDict[node].y, nodeDict[node].z] for node in nodeOrder[1:]]).swapaxes(0,1).swapaxes(0, 2)
+    dxtime = nodeDict[nodeOrder[0]].time
+    #dxInterp = interp1d(dxtime, dx, axis=0, fill_value='extrapolate')
+
+    # solving linear system for all timesteps
+    Ftime = nodeDict[nodeOrder[0]].time
+    Forg = np.array([np.dot(dxTemp.T, np.linalg.inv(dX.T)) for dxTemp in dx])
+    Finterp = interp1d(Ftime, Forg, axis=0, fill_value='extrapolate')
+    #
+    # overallTime = np.insert(bndDict[nodeOrder[0]].time, 0, 0.0)
+    # detF = np.linalg.det(F)
+    if source == 'nodfor':
+        nodfor = self.readnodfor()
+        F = Finterp(nodfor[0].time)
+        self.F = F
+
+        Ax = np.linalg.norm(np.cross(dX[1], dX[2]))
+        Ay = np.linalg.norm(np.cross(dX[0], dX[2]))
+        Az = np.linalg.norm(np.cross(dX[0], dX[1]))
+        A0 = np.array([[Ax, Ay, Az],
+                       [Ax, Ay, Az],
+                       [Ax, Ay, Az]])
+
+        Rxx = nodfor[1].Rx
+        Rxy = nodfor[1].Ry
+        Rxz = nodfor[1].Rz
+
+        Ryx = nodfor[2].Rx
+        Ryy = nodfor[2].Ry
+        Ryz = nodfor[2].Rz
+
+        Rzx = nodfor[3].Rx
+        Rzy = nodfor[3].Ry
+        Rzz = nodfor[3].Rz
+
+        # forceP=-1*np.array([[Rxx, Rxy, Rxz],
+        #                   [Ryx, Ryy, Ryz],
+        #                  [Rzx, Rzy, Rzz]]).swapaxes(0, 1).swapaxes(0, 2)
+
+        # df= P N ds
+        forceP = -1 * np.array([[Rxx, Ryx, Rzx],
+                                [Rxy, Ryy, Rzy],
+                                [Rxz, Ryz, Rzz]]).swapaxes(0, 1).swapaxes(0, 2)
+
+        P = forceP / A0
+        self.A0 = A0
+        self.forceP = forceP
+        self.P = P
+
+    elif source == 'bndout':
+        bndDict, nodeOrderBnd = self.readbndout()
+        F = Finterp(bndDict[nodeOrderBnd[0]].time)
+        self.F = F
+
+        Ax = np.linalg.norm(np.cross(dX[1], dX[2]))
+        Ay = np.linalg.norm(np.cross(dX[0], dX[2]))
+        Az = np.linalg.norm(np.cross(dX[0], dX[1]))
+        A0 = np.array([[Ax, Ay, Az],
+                       [Ax, Ay, Az],
+                       [Ax, Ay, Az]])
+
+        Rxx = bndDict[nodeOrderBnd[0]].Fx
+        Rxy = bndDict[nodeOrderBnd[0]].Fy
+        Rxz = bndDict[nodeOrderBnd[0]].Fz
+
+        Ryx = bndDict[nodeOrderBnd[1]].Fx
+        Ryy = bndDict[nodeOrderBnd[1]].Fy
+        Ryz = bndDict[nodeOrderBnd[1]].Fz
+
+        Rzx = bndDict[nodeOrderBnd[2]].Fx
+        Rzy = bndDict[nodeOrderBnd[2]].Fy
+        Rzz = bndDict[nodeOrderBnd[2]].Fz
+
+        # forceP=-1*np.array([[Rxx, Rxy, Rxz],
+        #                   [Ryx, Ryy, Ryz],
+        #                  [Rzx, Rzy, Rzz]]).swapaxes(0, 1).swapaxes(0, 2)
+
+        # df= P N ds
+        forceP = 1 * np.array([[Rxx, Ryx, Rzx],
+                               [Rxy, Ryy, Rzy],
+                               [Rxz, Ryz, Rzz]]).swapaxes(0, 1).swapaxes(0, 2)
+
+        P = forceP / A0
+        self.forceP = forceP
+        self.P = P
+
+    else:
+        raise Exception('{} was not recognised as source'.format(source))
+
+def traction_nodfor_periodic(nodfor):
+    nodfor_list=list(nodfor.values())
+    Rxx = nodfor_list[1].R[:,0]
+    Rxy = nodfor_list[1].R[:,1]
+    Rxz = nodfor_list[1].R[:,2]
+
+    Ryx = nodfor_list[2].R[:,0]
+    Ryy = nodfor_list[2].R[:,1]
+    Ryz = nodfor_list[2].R[:,2]
+
+    Rzx = nodfor_list[3].R[:,0]
+    Rzy = nodfor_list[3].R[:,1]
+    Rzz = nodfor_list[3].R[:,2]
+
+    # forceP=-1*np.array([[Rxx, Rxy, Rxz],
+    #                   [Ryx, Ryy, Ryz],
+    #                  [Rzx, Rzy, Rzz]]).swapaxes(0, 1).swapaxes(0, 2)
+
+    # df= P N ds
+    R = np.array([[Rxx, Ryx, Rzx],
+                            [Rxy, Ryy, Rzy],
+                            [Rxz, Ryz, Rzz]]).swapaxes(0, 1).swapaxes(0, 2)
     traction = -1 * R
     return traction
 

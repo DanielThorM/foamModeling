@@ -1,7 +1,10 @@
 import numpy as np
 import os
 import subprocess
-
+import meshmodel as mm
+import sys
+sys.path.insert(0, r"C:\Users\danieltm\OneDrive - NTNU\Python_Github\keywordGenerator")
+import keywordGenerator as kw
 
 class BoundaryConditions:#
     def __init__(self, keyword, mesh_geometry):
@@ -733,12 +736,13 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
 
 
     if options['sim_type'] == 'implicit':
-        keyword = BCs.periodic_linear_local(def_gradient, node_rot_lock=True)
+        keyword = BCs.periodic_linear_local(def_gradient, node_rot_lock=options['delete_slave_surfs'])
         keyword.end_key()
         keyword.write_key()
     elif options['sim_type'] == 'explicit':
         keyword = BCs.periodic_multiple_global(def_gradient)
         keyword.end_key()
+        #keyword.boundary_spc_node(bspcid=3333, nid=list(mesh_geometry.nodes.keys())[0], dofx=1, dofy=1, dofz=1, dofrx=0, dofry=0, dofrz=0, cid=0)
         keyword.write_key()
 ##########################################################################
 
@@ -1262,4 +1266,5 @@ def single_elements_template(def_gradient, model_file_name, material_data={}, do
 ##self.regularize(n=int(len(self.edges.keys())/2))
 #tessellation.mesh_file_name=mesh_file_name
 #tessellation.mesh2D(elem_size=0.02)
-#periodic_template(tessellation, model_file_name, def_gradient, sim_type='implicit', strain_coeff = 1.0, strain_rate = 1e2, size_coeff = 0.5, delete_slave_surfs=True)
+#periodic_template(tessellation, model_file_name, def_gradient, sim_type='implicit', strain_coeff = 1.0, strain_rate = 1e3, size_coeff = 0.5, delete_slave_surfs=True)
+#periodic_template(tessellation, model_file_name, def_gradient, sim_type='explicit', strain_coeff = 1.0, strain_rate = 1e3, size_coeff = 0.5, delete_slave_surfs=True, material_data={'matfail':0.0})
