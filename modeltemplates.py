@@ -555,7 +555,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
         'sigy':25.0,
         'etan':1.0,
         'pr':0.3,
-        'ro':9.2e-10,
+        'ro':9.1e-10,
         'matfail':2.0,
         'soften':False,
         'stress':None,
