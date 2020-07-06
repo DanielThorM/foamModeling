@@ -927,9 +927,7 @@ def non_periodic_template(tessellation, model_file_name, def_gradient, rho=0.05,
 
     mesh_geometry.create_side_elements(options['side_plates'], overhang=options['overhang'])
     side_parts = mesh_geometry.find_side_surfs(options['side_plates'])
-    non_side_parts=[side_part for side_part in side_parts if side_part != []]
-    if non_side_parts != []:
-        keyword.set_part_list(sid=99, pid_list=non_side_parts)
+    keyword.set_part_list(sid=99, pid_list=[side_pa for side_part in side_parts if side_part != [] for side_pa in side_part])
     for side_part in side_parts:
         if side_part != []:
             surf = mesh_geometry.surfs[side_part[0]]
@@ -938,13 +936,14 @@ def non_periodic_template(tessellation, model_file_name, def_gradient, rho=0.05,
                                  fs=material['fs'], fd=material['fd'], dc=material['dc'])
             keyword.element_shell_offset([mesh_geometry.shell_elements[surf.elem_ids[0]]], offset=-0.05)
 
-    if non_side_parts != []:
-        if options['sim_type'] == 'implicit':
-            #keyword.contact_automatic_single_surface_mortar_id(cid=5200001+i, ssid=5000001+i, sstyp=2, ignore=1)
-            keyword.contact_automatic_single_surface_mortar_id(cid=5200001, ssid=99, sstyp=6, ignore=1)
-        elif options['sim_type'] == 'explicit':
-            keyword.contact_automatic_single_surface_id(cid=5200001, ssid=99, sstyp=6,
-                                                     ignore=1, igap=2, snlog=1)
+
+    if options['sim_type'] == 'implicit':
+        #keyword.contact_automatic_single_surface_mortar_id(cid=5200001+i, ssid=5000001+i, sstyp=2, ignore=1)
+        keyword.contact_automatic_single_surface_mortar_id(cid=5200001, ssid=99, sstyp=6, ignore=1)
+    elif options['sim_type'] == 'explicit':
+
+        keyword.contact_automatic_single_surface_id(cid=5200001, ssid=99, sstyp=6,
+                                                 ignore=1, igap=2, snlog=1)
 
     if options['airbag'] == True:
         for i, volume in enumerate(
