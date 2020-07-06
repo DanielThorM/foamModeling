@@ -547,7 +547,8 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
         'beam_shape':'straight', #'marvi
         'beam_cs_shape':'round', #'tri'
         'shell_nip':7,
-        'delete_slave_surfs':False
+        'delete_slave_surfs':False,
+        'slave_surf_mat':'null'
     }
     options.update(kwargs)
     material = {
@@ -634,8 +635,10 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
             keyword.defineCurve(lcid=100, abscissas=material['strain'], ordinates=material['stress'])
         keyword.mat181(mid=1, youngs=mat_dict['E'], ro=material['ro'], lcid=100)
 
-    keyword.mat_null(mid=2, e = material['e'])
-    #keyword.mat24(mid=2, e=material['e']/2, sigy=0.0001, fail=material['matfail'], etan=0.00001)
+    if options['slave_surf_mat': 'null']:
+        keyword.mat_null(mid=2, e = material['e'])
+    elif options['slave_surf_mat': 'mat24']:
+        keyword.mat24(mid=2, e=material['e']/2, sigy=0.0001, fail=material['matfail'], etan=0.00001)
 
     if options['delete_slave_surfs'] == True:
         mesh_geometry.delete_slave_surfaces()
