@@ -414,17 +414,17 @@ def traction_bndout(bndout, node_order=None):
 
 def traction_bndout_periodic(bndout):
     bndout_list = list(bndout.values())
-    Rxx = bndout_list[1].F[:, 0]
-    Rxy = bndout_list[1].F[:, 1]
-    Rxz = bndout_list[1].F[:, 2]
+    Rxx = bndout_list[0].F[:, 0]
+    Rxy = bndout_list[0].F[:, 1]
+    Rxz = bndout_list[0].F[:, 2]
 
-    Ryx = bndout_list[2].F[:, 0]
-    Ryy = bndout_list[2].F[:, 1]
-    Ryz = bndout_list[2].F[:, 2]
+    Ryx = bndout_list[1].F[:, 0]
+    Ryy = bndout_list[1].F[:, 1]
+    Ryz = bndout_list[1].F[:, 2]
 
-    Rzx = bndout_list[3].F[:, 0]
-    Rzy = bndout_list[3].F[:, 1]
-    Rzz = bndout_list[3].F[:, 2]
+    Rzx = bndout_list[2].F[:, 0]
+    Rzy = bndout_list[2].F[:, 1]
+    Rzz = bndout_list[2].F[:, 2]
 
     # forceP=-1*np.array([[Rxx, Rxy, Rxz],
     #                   [Ryx, Ryy, Ryz],
