@@ -372,7 +372,7 @@ class BoundaryConditions:#
         temp_coeff_list = list(np.array(temp_list)[:,1])
         return temp_nid_list, temp_coeff_list
 
-    def periodic_linear_local(self, def_gradient, node_rot_lock=False):
+    def periodic_linear_local(self, node_rot_lock=False):
         constrained_id_counter=9000001
         ref_elements = list(self.mesh_geometry.solid_elements.values())
         ref_nodes = [ref_elem.node_ids[0] for ref_elem in ref_elements]
@@ -411,11 +411,10 @@ class BoundaryConditions:#
         #####################################################################
         #Element displacemente
         #####################################################################
-        self.def_grad_prescription(def_gradient, [self.mesh_geometry.nodes[node] for node in corner_ref_nodes])
-        self.keyword.database_hist_node(nids=ref_nodes)
+
         return self.keyword
 
-    def periodic_multiple_global(self, def_gradient):
+    def periodic_multiple_global(self):
         constrained_id_counter = 9000001
         ref_elements = list(self.mesh_geometry.solid_elements.values())
         ref_nodes = [ref_elem.node_ids[0] for ref_elem in ref_elements]
@@ -453,16 +452,29 @@ class BoundaryConditions:#
 
         #####################################################################
         # Element displacemente
-        #####################################################################
+        ####################################################################
+        return self.keyword
+
+    def node_displacements(self, def_gradient):
+        ref_elements = list(self.mesh_geometry.solid_elements.values())
+        ref_nodes = [ref_elem.node_ids[0] for ref_elem in ref_elements]
+        self.keyword.boundary_spc_node(bspcid=9999, nid=ref_nodes[0], dofx=1, dofy=1, dofz=1)
+        corner_ref_nodes = ref_nodes[1:]
+        self.def_grad_prescription(def_gradient, [self.mesh_geometry.nodes[node] for node in corner_ref_nodes])
+        self.keyword.database_hist_node(nids=ref_nodes)
+        return self.keyword
+
+    def element_displacements(self, def_gradient):
+        ref_elements = list(self.mesh_geometry.solid_elements.values())
+        ref_nodes = [ref_elem.node_ids[0] for ref_elem in ref_elements]
         self.def_grad_prescription(def_gradient, [self.mesh_geometry.nodes[node] for node in ref_nodes],
                                    ref_node_set=[ref_elem.node_ids[1:] for ref_elem in ref_elements])
         self.keyword.database_hist_node(nids=ref_nodes)
         self.keyword.set_node_list(nsid=888888 - 1, node_list=[ref_elements[0].node_ids[0]])
         self.keyword.database_nodfor_group(nsid=888888 - 1)
         for i in range(3):
-            self.keyword.set_node_list(nsid=888888 + i, node_list=[ref_elements[i+1].node_ids[0]])
+            self.keyword.set_node_list(nsid=888888 + i, node_list=[ref_elements[i + 1].node_ids[0]])
             self.keyword.database_nodfor_group(nsid=888888 + i)
-
         return self.keyword
 
     def solid_element_single(self, def_gradient):
@@ -547,8 +559,12 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
         'beam_shape':'straight', #'marvi
         'beam_cs_shape':'round', #'tri'
         'shell_nip':7,
-        'delete_slave_surfs':False,
-        'slave_surf_mat':'null'
+        'slave_surf_delete':False,
+        'slave_surf_rotLock': False,
+        'slave_surf_mat':'null',
+        'periodic_constraint_type':None,
+        'periodic_displacement_type':None,
+        'periodic_displacement_definition': None
     }
     options.update(kwargs)
     material = {
@@ -557,7 +573,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
         'etan':1.0,
         'pr':0.3,
         'ro':9.1e-10,
-        'matfail':2.0,
+        'matfail':0.0,
         'soften':False,
         'stress':None,
         'strain':None,
@@ -640,7 +656,7 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
     elif options['slave_surf_mat']=='mat24':
         keyword.mat24(mid=2, e=material['e'], sigy=0.0001, fail=material['matfail'], etan=0.00001)
 
-    if options['delete_slave_surfs'] == True:
+    if options['slave_surf_delete'] == True or phi == 1.0:
         mesh_geometry.delete_slave_surfaces()
 
     mesh_geometry.set_csa_sigma(options['csa_sigma'])
@@ -689,15 +705,46 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
                 keyword.part_contact(pid=beam.id_, secid=beam.id_, mid=mid,
                                      fs=material['fs'], fd=material['fd'], dc=material['dc'])
 
+    if options['sim_type'] == 'implicit':
+        if options['periodic_constraint_type'] == None:
+            options['periodic_constraint_type'] = 'linear_local'
+        if options['periodic_displacement_type'] == None:
+            options['periodic_displacement_type'] = 'node'
+        if options['periodic_displacement_definition'] == None:
+            options['periodic_displacement_definition'] = 'disp'
+
+
+    elif options['sim_type'] == 'explicit':
+        keyword.disp_type = 'vel'
+        if options['periodic_constraint_type'] == None:
+            options['periodic_constraint_type'] = 'multiple_global'
+        if options['periodic_displacement_type'] == None:
+            options['periodic_displacement_type'] = 'element'
+        if options['periodic_displacement_definition'] == None:
+            options['periodic_displacement_definition'] = 'vel'
+    keyword.disp_type = options['periodic_displacement_definition']
 
     if options['sim_type'] == 'implicit':
         #keyword.contact_automatic_single_surface_mortar_id(cid=5200001+i, ssid=5000001+i, sstyp=2, ignore=1)
-        keyword.contact_automatic_single_surface_mortar_id(cid=5200001, ssid=0, sstyp=2, ignore=1)
+        if options['periodic_displacement_type'] == 'node':
+            keyword.contact_automatic_single_surface_mortar_id(cid=5200001, ssid=0, sstyp=2, ignore=1)
+        elif options['periodic_displacement_type'] == 'element':
+            keyword.set_part_list(sid=99,
+                                  pid_list=[solid.id_ for solid in mesh_geometry.solids.values()])
+            keyword.contact_automatic_single_surface_mortar_id(cid=5200001, ssid=99, sstyp=6, ignore=1)
     elif options['sim_type'] == 'explicit':
-        keyword.set_part_list(sid=99,
-                              pid_list=[solid.id_ for solid in mesh_geometry.solids.values()])
-        keyword.contact_automatic_single_surface_id(cid=5200001, ssid=99, sstyp=6,
-                                                 ignore=1, igap=2, snlog=1)
+        if options['periodic_displacement_type'] == 'node':
+            keyword.contact_automatic_single_surface_id(cid=5200001, ssid=0, sstyp=2, ignore=1)
+
+        elif options['periodic_displacement_type'] == 'element':
+            keyword.set_part_list(sid=99,
+                                  pid_list=[solid.id_ for solid in mesh_geometry.solids.values()])
+            if phi == 1.0:
+                keyword.contact_automatic_general_id(cid=5200001, ssid=99, sstyp=6,
+                                                            ignore=1)
+            else:
+                keyword.contact_automatic_single_surface_id(cid=5200001, ssid=99, sstyp=6,
+                                                     ignore=1, igap=2, snlog=1)
 
     if options['airbag'] == True:
         for i, volume in enumerate(
@@ -723,11 +770,8 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
     #def_gradient = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 0.2]])
     keyword.node(mesh_geometry.nodes)
     BCs = BoundaryConditions(keyword, mesh_geometry)
-    if options['sim_type'] == 'implicit':
-        keyword.disp_type = 'disp'
 
-    elif options['sim_type'] == 'explicit':
-        keyword.disp_type = 'vel'
+    if options['periodic_displacement_type']=='element':
         keyword.mat24(mid=3, e=1e7, ro=1e-7, pr=0.0, sigy=1e9)
         keyword.element_solid(mesh_geometry.solid_elements)
         keyword.section_solid(secid=3, elform=2)
@@ -737,16 +781,19 @@ def periodic_template(tessellation, model_file_name, def_gradient, rho=0.05, phi
     if options['return_copy']==True:
        return BCs
 
+    if options['periodic_constraint_type'] == 'linear_local':#options['sim_type'] == 'implicit':
+        _ = BCs.periodic_linear_local(node_rot_lock=options['slave_surf_rotLock'])
 
-    if options['sim_type'] == 'implicit':
-        keyword = BCs.periodic_linear_local(def_gradient, node_rot_lock=options['delete_slave_surfs'])
-        keyword.end_key()
-        keyword.write_key()
-    elif options['sim_type'] == 'explicit':
-        keyword = BCs.periodic_multiple_global(def_gradient)
-        keyword.end_key()
-        #keyword.boundary_spc_node(bspcid=3333, nid=list(mesh_geometry.nodes.keys())[0], dofx=1, dofy=1, dofz=1, dofrx=0, dofry=0, dofrz=0, cid=0)
-        keyword.write_key()
+    elif options['periodic_constraint_type'] == 'multiple_global':#options['sim_type'] == 'explicit':
+        _ = BCs.periodic_multiple_global()
+
+    if options['periodic_displacement_type'] == 'node':
+        keyword = BCs.node_displacements(def_gradient)
+    elif options['periodic_displacement_type'] == 'element':
+        keyword = BCs.element_displacements(def_gradient)
+
+    keyword.end_key()
+    keyword.write_key()
 ##########################################################################
 
 ##########################################################################
@@ -871,7 +918,7 @@ def non_periodic_template(tessellation, model_file_name, def_gradient, rho=0.05,
         keyword.mat181(mid=1, youngs=mat_dict['e'], ro=material['ro'], lcid=100)
 
     #keyword.mat_null(mid=2, e = material['e'])
-    keyword.mat24(mid=2, e=material['e']/30, sigy=0.0001, fail=0.0, etan=0.00001)
+    keyword.mat24(mid=2, e=material['e'], sigy=0.0001, fail=0.0, etan=0.00001, pr=0.0)
 
 
     mesh_geometry.set_csa_sigma(options['csa_sigma'])
@@ -931,10 +978,11 @@ def non_periodic_template(tessellation, model_file_name, def_gradient, rho=0.05,
     for side_part in side_parts:
         if side_part != []:
             surf = mesh_geometry.surfs[side_part[0]]
-            keyword.section_shell(secid=surf.id_, t1=0.1, elform=options['elem_type'], nip=options['shell_nip'])
+            side_part_thickness=0.01
+            keyword.section_shell(secid=surf.id_, t1=side_part_thickness, elform=options['elem_type'], nip=options['shell_nip'])
             keyword.part_contact(pid=surf.id_, secid=surf.id_, mid=2,
                                  fs=material['fs'], fd=material['fd'], dc=material['dc'])
-            keyword.element_shell_offset([mesh_geometry.shell_elements[surf.elem_ids[0]]], offset=-0.05)
+            keyword.element_shell_offset([mesh_geometry.shell_elements[surf.elem_ids[0]]], offset=-side_part_thickness/2.)
 
 
     if options['sim_type'] == 'implicit':
@@ -1268,6 +1316,16 @@ def single_elements_template(def_gradient, model_file_name, material_data={}, do
 #tessellation = ts.Tessellation('nfrom_morpho-id1_mod.tess')
 ##self.regularize(n=int(len(self.edges.keys())/2))
 #tessellation.mesh_file_name=mesh_file_name
-#tessellation.mesh2D(elem_size=0.02)
-#periodic_template(tessellation, model_file_name, def_gradient, sim_type='implicit', strain_coeff = 1.0, strain_rate = 1e3, size_coeff = 0.5, delete_slave_surfs=True)
+##tessellation.mesh2D(elem_size=0.04)
+#options={'slave_surf_delete':False,
+         #'slave_surf_rotLock':False,
+         #'strain_coeff':1.0,
+         #'strain_rate':1e3,
+         #'size_coeff':0.5,
+         #'sim_type':'explicit',
+         #'periodic_constraint_type':'linear_local',
+         #'periodic_displacement_type':'element',
+         #'periodic_displacement_definition':'disp'
+         #}
+#periodic_template(tessellation, model_file_name, def_gradient, **options, material_data={'matfail':0.0})
 #periodic_template(tessellation, model_file_name, def_gradient, sim_type='explicit', strain_coeff = 1.0, strain_rate = 1e3, size_coeff = 0.5, delete_slave_surfs=True, material_data={'matfail':0.0})

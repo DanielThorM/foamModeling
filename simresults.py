@@ -4,7 +4,7 @@ import numpy as np
 import scipy.interpolate
 
 class SimResults(object):
-    def __init__(self, sim_folder, periodic=False):
+    def __init__(self, sim_folder, periodic=False, rd=None):
         if sim_folder == '':
             sim_folder=os.getcwd()
         self.sim_folder=sim_folder
@@ -27,6 +27,7 @@ class SimResults(object):
 
         self.dX_ref = None
         self.periodic=periodic
+        self.rd = rd
     def PK1(self, source='bndout'):
         if self.periodic == True:
             if source == 'bndout':
@@ -84,6 +85,21 @@ class SimResults(object):
             F_interp, dX = def_gradient(self.nodout, dX_ref=self.dX_ref)
             A0 = area(F_interp(0.0), dX)
         return A0
+
+    def gas_pressure(self, rd=None):
+        if rd!=None:
+            self.rd=rd
+        if self.rd==None:
+            self.rd=0.0
+
+        jacobian = np.linalg.det(self.F())
+        v1 = 1 - self.rd
+        v2 = jacobian - self.rd
+        p1 = 0.1 #MPa
+        p2 = p1 * v1 / v2
+        p2gauge = p2 - p1
+        return np.array([np.identity(3) * p2gauge_val for p2gauge_val in p2gauge])
+
     # os.chdir(workingFolder)
 
 def readrwforc(sim_folder):
