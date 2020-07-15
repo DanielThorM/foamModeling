@@ -492,9 +492,15 @@ class FoamModel(MeshModel):
     def find_vertex_node_map(self):
         if self.tessellation.periodic == False: raise Exception('Invalid action for current tesselation')
         vertex_to_node={}
+        rel_tol = 1e-7
+        if max(self.domain_size)>10.0:
+            rel_tol = rel_tol*100
+        elif max(self.domain_size)>1.0:
+            rel_tol = rel_tol*10
+
         for i, vertex in enumerate(self.tessellation.vertices.values()):
             vertex_to_node[vertex.id_] = i+1 #Works because gmsh node numbers after the input file
-            if compare_arrays(vertex.coord, self.nodes[i + 1].coord) == False:
+            if compare_arrays(vertex.coord, self.nodes[i + 1].coord,  rel_tol = rel_tol) == False:
                 raise Exception('Vertex {} and node {} location not equal'.format(vertex.id_, i+1))
             node_to_vertex = dict(zip(vertex_to_node.values(), vertex_to_node.keys()))
         if len(vertex_to_node) != len(self.tessellation.vertices.keys()):
@@ -922,8 +928,6 @@ class FoamModel(MeshModel):
                 temp_side_parts.extend(mapped_surfs)
             edge_parts_pr_side.append(list(set(temp_side_parts).intersection(self.surfs.keys())))
         return edge_parts_pr_side
-
-
 
 class SolidModel(MeshModel):
     def __init__(self, domain_size=np.array([1.0, 1.0, 1.0]), elem_size = 1.0):
